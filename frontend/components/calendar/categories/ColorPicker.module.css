@@ -1,0 +1,83 @@
+.fieldLabel {
+  font-family: var(--font-sans);
+  font-size: 0.66rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.4rem;
+  display: block;
+}
+
+.nameInput {
+  width: 100%;
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  color: var(--ink);
+  border: none;
+  border-bottom: 1px solid var(--line);
+  padding: 0.4rem 0.1rem;
+  outline: none;
+  margin-bottom: 0.9rem;
+  background: none;
+}
+.nameInput:focus {
+  border-color: var(--pink);
+}
+
+.swatchGrid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 0.7rem;
+}
+.swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition:
+    transform 0.15s,
+    border-color 0.15s;
+  padding: 0;
+}
+.swatch:hover {
+  transform: scale(1.1);
+}
+.swatch.selected {
+  border-color: var(--ink);
+}
+
+.hexRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.hexInput {
+  flex: 1;
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  color: var(--ink);
+  border: none;
+  border-bottom: 1px solid var(--line);
+  padding: 0.4rem 0.1rem;
+  outline: none;
+  background: none;
+}
+.hexInput:focus {
+  border-color: var(--pink);
+}
+.hexPreview {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 1px solid var(--line);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}

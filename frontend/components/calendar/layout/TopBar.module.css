@@ -1,0 +1,47 @@
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.75rem 3.5rem;
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+}
+
+.logo {
+  font-size: 1.3rem;
+  color: var(--pink);
+  letter-spacing: 0.03em;
+}
+
+.viewToggle {
+  display: flex;
+  align-items: center;
+  gap: 2.25rem;
+}
+
+.viewToggle button {
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid transparent;
+  transition:
+    color 0.2s,
+    border-color 0.2s;
+}
+
+.viewToggle button.active {
+  color: var(--pink);
+  border-color: var(--pink);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}

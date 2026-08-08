@@ -1,0 +1,77 @@
+.row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.4rem 0.15rem;
+  border-radius: 8px;
+  position: relative;
+  transition: background 0.15s;
+}
+.row:hover {
+  background: var(--line-soft);
+}
+.row.off {
+  opacity: 0.4;
+}
+
+.check {
+  width: 15px;
+  height: 15px;
+  border-radius: 4px;
+  border: 1.5px solid var(--muted);
+  flex-shrink: 0;
+  cursor: pointer;
+  position: relative;
+  background: var(--white);
+}
+.check.checked::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 0px;
+  width: 4px;
+  height: 8px;
+  border: solid var(--ink);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  cursor: pointer;
+  border: none;
+  padding: 0;
+}
+
+.name {
+  font-size: 0.95rem;
+  color: var(--ink);
+  flex: 1;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: none;
+  border: none;
+  text-align: left;
+  font-family: var(--font-serif);
+  padding: 0;
+}
+
+.menuBtn {
+  opacity: 0;
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0.1rem 0.3rem;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+.row:hover .menuBtn {
+  opacity: 1;
+}

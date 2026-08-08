@@ -1,0 +1,21 @@
+.logout {
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 2rem;
+  padding: 0.55rem 1.3rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.logout:hover:not(:disabled) {
+  color: var(--pink);
+  border-color: var(--pink);
+}
+.logout:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}

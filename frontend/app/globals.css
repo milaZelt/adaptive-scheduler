@@ -11,10 +11,17 @@
   --pink-mid: #d9a3ae;
   --pink-pale: #faeef1;
   --pink-fill: #f3dbe1;
-  --white: #fffdfc;
-  --ink: #3a2a2e;
-  --muted: #8a6f74;
-  --line: #f0d9dd;
+  --pink-faint: #f6e9ec;
+  --white: #fffefd;
+  --ink: #2e2225;
+  --muted: #9c8589;
+  --line: #ece0e2;
+  --line-soft: #f5eced;
+  --danger: #c07070;
+  --success: #6a9c76;
+
+  --font-serif: "Times New Roman", Times, serif;
+  --font-sans: Arial, Helvetica, sans-serif;
 }
 
 html,
@@ -23,7 +30,7 @@ body {
 }
 
 body {
-  font-family: "Times New Roman", Times, serif;
+  font-family: var(--font-serif);
   background: var(--white);
   color: var(--ink);
   line-height: 1.6;
@@ -35,4 +42,8 @@ a {
 
 button {
   font: inherit;
+}
+
+.sans {
+  font-family: var(--font-sans);
 }

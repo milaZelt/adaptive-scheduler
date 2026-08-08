@@ -1,0 +1,51 @@
+.gearBtn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.gearBtn:hover {
+  color: var(--pink);
+  border-color: var(--pink);
+}
+
+.title {
+  font-size: 1.05rem;
+  color: var(--pink);
+  font-style: italic;
+  margin-bottom: 1rem;
+}
+
+.fieldLabel {
+  font-family: var(--font-sans);
+  font-size: 0.66rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.4rem;
+  display: block;
+}
+
+.fieldInput {
+  width: 100%;
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  color: var(--ink);
+  border: none;
+  border-bottom: 1px solid var(--line);
+  padding: 0.4rem 0.1rem;
+  outline: none;
+  margin-bottom: 1rem;
+  background: none;
+}
+.fieldInput:focus {
+  border-color: var(--pink);
+}

@@ -1,0 +1,54 @@
+"use client";
+
+import React, { useRef, useState } from "react";
+import { useAppState } from "../state/AppStateContext";
+import ContextMenu from "@/components/ui/ContextMenu";
+import styles from "./Sidebar.module.css";
+
+export default function ActionRow() {
+  const { openFixedEventDrawer, openFlexibleEventDrawer, showToast } = useAppState();
+  const createBtnRef = useRef<HTMLButtonElement>(null);
+  const [menuAnchor, setMenuAnchor] = useState<DOMRect | null>(null);
+
+  return (
+    <div className={styles.actionRow}>
+      <button
+        ref={createBtnRef}
+        className={`${styles.linkBtn} sans`}
+        onClick={() => setMenuAnchor(createBtnRef.current?.getBoundingClientRect() ?? null)}
+      >
+        Create <span>+</span>
+      </button>
+      {menuAnchor && (
+        <ContextMenu
+          anchorRect={menuAnchor}
+          align="left"
+          onClose={() => setMenuAnchor(null)}
+          items={[
+            {
+              label: "Fixed Event",
+              onClick: () => {
+                setMenuAnchor(null);
+                openFixedEventDrawer();
+              },
+            },
+            {
+              label: "Flexible Event",
+              onClick: () => {
+                setMenuAnchor(null);
+                openFlexibleEventDrawer();
+              },
+            },
+          ]}
+        />
+      )}
+
+      <button
+        className={`${styles.linkBtn} sans`}
+        onClick={() => showToast("Regenerating your week…")}
+      >
+        Regenerate <span>↻</span>
+      </button>
+    </div>
+  );
+}

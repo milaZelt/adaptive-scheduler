@@ -1,0 +1,31 @@
+.menu {
+  position: fixed;
+  z-index: 200;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 12px 36px rgba(46, 34, 37, 0.14);
+  padding: 0.4rem;
+  min-width: 150px;
+}
+
+.menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  color: var(--ink);
+  padding: 0.55rem 0.7rem;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+.menu button:hover {
+  background: var(--line-soft);
+}
+.menu button.danger {
+  color: var(--danger);
+}

@@ -1,0 +1,121 @@
+.panel {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-top: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.9rem;
+}
+.label {
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  color: var(--ink);
+  flex-shrink: 0;
+}
+.numberInput {
+  width: 52px;
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  color: var(--ink);
+  border: none;
+  border-bottom: 1px solid var(--line);
+  padding: 0.35rem 0.1rem;
+  outline: none;
+  background: none;
+  text-align: center;
+}
+.numberInput:focus {
+  border-color: var(--pink);
+}
+.unitSelect {
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  color: var(--ink);
+  border: none;
+  border-bottom: 1px solid var(--line);
+  padding: 0.35rem 0.1rem;
+  outline: none;
+  background: var(--white);
+  cursor: pointer;
+}
+.unitSelect:focus {
+  border-color: var(--pink);
+}
+
+.dayToggleRow {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+.dayToggle {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: none;
+  color: var(--muted);
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.dayToggle:hover {
+  border-color: var(--pink);
+  color: var(--pink);
+}
+.dayToggleActive {
+  background: var(--pink);
+  border-color: var(--pink);
+  color: var(--white);
+}
+
+.endsBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-bottom: 0.9rem;
+}
+.endOption {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  color: var(--ink);
+  cursor: pointer;
+}
+.endOption input[type="radio"] {
+  accent-color: var(--pink);
+  cursor: pointer;
+}
+.inlineInput {
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  color: var(--ink);
+  border: none;
+  border-bottom: 1px solid var(--line);
+  padding: 0.25rem 0.1rem;
+  outline: none;
+  background: none;
+}
+.inlineInput:focus {
+  border-color: var(--pink);
+}
+.inlineNumberInput {
+  width: 48px;
+  text-align: center;
+}
+
+.summary {
+  font-family: var(--font-sans);
+  font-size: 0.76rem;
+  color: var(--muted);
+  font-style: italic;
+  line-height: 1.5;
+}
