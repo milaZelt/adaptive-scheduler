@@ -1,0 +1,68 @@
+.sidebar {
+  width: 250px;
+  flex-shrink: 0;
+  border-left: 1px solid var(--line);
+  padding: 1.5rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  overflow-y: auto;
+}
+
+.noteCard {
+  background: var(--pink-pale);
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.noteTitle {
+  font-size: 1.05rem;
+  color: var(--pink);
+}
+
+.noteText {
+  font-family: Arial, sans-serif;
+  font-size: 0.85rem;
+  color: var(--ink);
+  line-height: 1.6;
+  min-height: 70px;
+  outline: none;
+}
+
+.noteText:empty::before {
+  content: attr(data-placeholder);
+  color: var(--muted);
+}
+
+.messageBox {
+  background: var(--pink-pale);
+  border-radius: 12px;
+  padding: 0.9rem 1rem;
+}
+
+.messageBox.error {
+  background: #fbeaea;
+}
+
+.messageLabel {
+  font-family: Arial, sans-serif;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pink);
+  margin-bottom: 0.4rem;
+}
+
+.messageBox.error .messageLabel {
+  color: #c9707a;
+}
+
+.messageText {
+  font-family: Arial, sans-serif;
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.5;
+}

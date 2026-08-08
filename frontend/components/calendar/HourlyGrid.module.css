@@ -1,0 +1,83 @@
+.hourlyGrid {
+  display: grid;
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+  flex: 1;
+  min-height: 600px;
+}
+
+.dayHead {
+  text-align: center;
+  padding: 0.75rem 0;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: var(--pink-pale);
+}
+
+.dayHead.today {
+  background: var(--pink);
+}
+
+.dayHead.today .dow,
+.dayHead.today .dom {
+  color: var(--white);
+}
+
+.dow {
+  font-family: Arial, sans-serif;
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.dom {
+  font-size: 1.1rem;
+  color: var(--ink);
+  margin-top: 0.15rem;
+}
+
+.timeCol {
+  border-right: 1px solid var(--line);
+}
+
+.timeSlot {
+  height: 48px;
+  border-bottom: 1px solid var(--line);
+  font-family: Arial, sans-serif;
+  font-size: 0.62rem;
+  color: var(--muted);
+  text-align: right;
+  padding: 0.2rem 0.4rem 0;
+}
+
+.dayCol {
+  border-right: 1px solid var(--line);
+  position: relative;
+}
+
+.hourCell {
+  height: 48px;
+  border-bottom: 1px solid var(--line);
+}
+
+.event {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  border-left: 3px solid var(--pink);
+  background: var(--pink-fill);
+  border-radius: 6px;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.76rem;
+  color: var(--ink);
+  overflow: hidden;
+}
+
+.eventTime {
+  font-family: Arial, sans-serif;
+  font-size: 0.6rem;
+  color: var(--muted);
+  display: block;
+  margin-top: 0.1rem;
+}

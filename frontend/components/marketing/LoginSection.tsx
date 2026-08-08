@@ -1,12 +1,40 @@
+"use client";
+
+import { useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 import styles from "./LoginSection.module.css";
 
 export default function LoginSection() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleGoogleSignIn = async () => {
+    setError(null);
+    setLoading(true);
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+    }
+  };
+
   return (
     <section id="login" className={styles.login}>
       <div className={styles.card}>
         <span className={styles.tag}>Welcome back!</span>
         <h2 className={styles.title}>Sign in to continue.</h2>
-        <button type="button" disabled className={styles.googleButton}>
+        <button
+          type="button"
+          onClick={handleGoogleSignIn}
+          disabled={loading}
+          className={styles.googleButton}
+        >
           <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
             <path
               fill="#4285F4"
@@ -25,9 +53,9 @@ export default function LoginSection() {
               d="M12 4.75c1.76 0 3.34.61 4.58 1.79l3.44-3.44C17.94 1.19 15.24 0 12 0 7.31 0 3.21 2.7 1.24 6.66l4.03 3.09C6.22 6.87 8.87 4.75 12 4.75z"
             />
           </svg>
-          Sign in with Google
+          {loading ? "Redirecting…" : "Sign in with Google"}
         </button>
-        <p className={styles.hint}>Coming soon</p>
+        {error && <p className={styles.error}>{error}</p>}
       </div>
     </section>
   );
