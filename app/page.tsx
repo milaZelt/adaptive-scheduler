@@ -6,12 +6,12 @@ import FaqSection from "@/components/FaqSection";
 
 export default function Home() {
   return (
-    <div className="flex flex-1 flex-col">
+    <>
       <Navbar />
       <Hero />
       <LoginSection />
       <AboutSection />
       <FaqSection />
-    </div>
+    </>
   );
 }

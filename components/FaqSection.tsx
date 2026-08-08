@@ -1,3 +1,5 @@
+import styles from "./FaqSection.module.css";
+
 const faqs = [
   {
     question: "What is Nextly?",
@@ -23,26 +25,23 @@ const faqs = [
 
 export default function FaqSection() {
   return (
-    <section
-      id="faq"
-      className="border-t border-black/[.08] px-6 py-24 dark:border-white/[.08]"
-    >
-      <div className="mx-auto max-w-2xl">
-        <h2 className="text-center text-2xl font-semibold tracking-tight text-black sm:text-3xl dark:text-white">
-          FAQ
-        </h2>
-        <dl className="mt-12 flex flex-col gap-8">
+    <section id="faq" className={styles.faq}>
+      <div className={styles.inner}>
+        <span className={styles.tag}>FAQ</span>
+        <h2 className={styles.title}>Questions & Answers </h2>
+        <div className={styles.list}>
           {faqs.map((faq) => (
-            <div key={faq.question}>
-              <dt className="font-medium text-black dark:text-white">
+            <details key={faq.question} className={styles.item}>
+              <summary className={styles.question}>
                 {faq.question}
-              </dt>
-              <dd className="mt-2 text-zinc-600 dark:text-zinc-400">
-                {faq.answer}
-              </dd>
-            </div>
+                <span className={styles.chevron} aria-hidden="true">
+                  &#8964;
+                </span>
+              </summary>
+              <p className={styles.answer}>{faq.answer}</p>
+            </details>
           ))}
-        </dl>
+        </div>
       </div>
     </section>
   );
