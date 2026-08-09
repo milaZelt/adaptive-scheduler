@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useAppState } from "../state/AppStateContext";
-import { sameDay } from "@/lib/calendar/dateUtils";
+import { sameDay, toISODate } from "@/lib/calendar/dateUtils";
 import { START_HOUR, END_HOUR, ROW_HEIGHT, DOW_SHORT } from "@/lib/calendar/constants";
 import EventBlock from "./EventBlock";
 import AllDayChip from "./AllDayChip";
@@ -84,6 +84,7 @@ export default function TimeGrid({ days }: TimeGridProps) {
             <div
               key={`col-${i}`}
               className={styles.gridDayCol}
+              data-date-col={toISODate(d)}
               style={
                 {
                   gridRow: 3,

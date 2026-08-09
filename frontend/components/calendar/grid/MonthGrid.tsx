@@ -51,7 +51,7 @@ export default function MonthGrid({ anchor }: MonthGridProps) {
                         background: cat ? cat.color : "#cccccc",
                         borderColor: cat ? shadeColor(cat.color, -30) : "#999999",
                       }}
-                      onClick={() => openEventDetail(e.id)}
+                      onClick={() => openEventDetail(e)}
                     />
                   );
                 })}

@@ -1,10 +1,14 @@
 "use client";
 
 import React, { useState } from "react";
-import type { CalendarEvent, FixedEventFormState, RepeatOption } from "@/lib/calendar/types";
+import type { CalendarEvent, RepeatOption } from "@/lib/calendar/types";
 import { useAppState } from "../state/AppStateContext";
 import { toISODate, decimalToTimeInput, timeInputToDecimal } from "@/lib/calendar/dateUtils";
-import { defaultCustomRecurrence, repeatOptionLabel } from "@/lib/calendar/recurrence";
+import {
+  defaultCustomRecurrence,
+  isValidCustomRecurrence,
+  repeatOptionLabel,
+} from "@/lib/calendar/recurrence";
 import Drawer from "./Drawer";
 import CustomRepeatPanel from "./CustomRepeatPanel";
 import Button from "@/components/ui/Button";
@@ -25,8 +29,9 @@ interface FixedEventFormProps {
 }
 
 export default function FixedEventForm({ prefill, onClose }: FixedEventFormProps) {
-  const { currentDate, categories, showToast } = useAppState();
+  const { currentDate, categories, showToast, createEvent, updateEvent } = useAppState();
   const isEdit = !!prefill;
+  const [saving, setSaving] = useState(false);
 
   const initialDate = prefill ? new Date(prefill.date + "T00:00:00") : new Date(currentDate);
 
@@ -53,27 +58,38 @@ export default function FixedEventForm({ prefill, onClose }: FixedEventFormProps
     return isNaN(d.getTime()) ? initialDate : d;
   })();
 
-  const timeValid = allDay || (start && end);
-  const canSave = Boolean(title.trim() && date && timeValid && categoryId);
+  const timeValid = Boolean(
+    allDay || (start && end && timeInputToDecimal(end) > timeInputToDecimal(start)),
+  );
+  const recurrenceValid = repeat !== "custom" || isValidCustomRecurrence(customRecurrence);
+  const canSave = Boolean(title.trim() && date && timeValid && categoryId && recurrenceValid);
 
-  function handleSave() {
-    const formState: FixedEventFormState = {
-      mode: isEdit ? "edit" : "create",
-      id: isEdit ? prefill!.id : null,
-      type: "fixed",
+  async function handleSave() {
+    if (!canSave || saving) return;
+    setSaving(true);
+
+    const payload: Omit<CalendarEvent, "id"> = {
       title: title.trim(),
       date,
       allDay,
       start: allDay ? null : timeInputToDecimal(start),
       end: allDay ? null : timeInputToDecimal(end),
-      repeat,
-      customRecurrence: repeat === "custom" ? customRecurrence : null,
-      description,
       categoryId,
+      type: "fixed",
+      description: description.trim() || undefined,
+      repeat,
+      customRecurrence: repeat === "custom" ? customRecurrence : undefined,
     };
-    console.log("Fixed event form state:", formState);
-    showToast("Saved — check console");
-    onClose();
+
+    const success = isEdit
+      ? await updateEvent(prefill!.id, payload)
+      : (await createEvent(payload)) !== null;
+
+    setSaving(false);
+    if (success) {
+      showToast(isEdit ? "Event updated" : "Event created");
+      onClose();
+    }
   }
 
   return (
@@ -81,8 +97,8 @@ export default function FixedEventForm({ prefill, onClose }: FixedEventFormProps
       title={isEdit ? "Edit Event" : "New Fixed Event"}
       onClose={onClose}
       footer={
-        <Button variant="primary" disabled={!canSave} onClick={handleSave}>
-          Save
+        <Button variant="primary" disabled={!canSave || saving} onClick={handleSave}>
+          {saving ? "Saving…" : "Save"}
         </Button>
       }
     >

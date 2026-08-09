@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { AppStateProvider, useAppState } from "./state/AppStateContext";
 import TopBar from "./layout/TopBar";
 import Sidebar from "./layout/Sidebar";
@@ -13,26 +13,58 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Toast from "@/components/ui/Toast";
 import styles from "./CalendarApp.module.css";
 
-export default function CalendarApp() {
+interface CalendarAppProps {
+  userId: string;
+}
+
+export default function CalendarApp({ userId }: CalendarAppProps) {
   return (
-    <AppStateProvider>
+    <AppStateProvider userId={userId}>
       <CalendarAppShell />
     </AppStateProvider>
   );
 }
 
 function CalendarAppShell() {
-  const { drawer, closeDrawer, detailEvent, closeEventDetail, confirmDialog, closeConfirmDialog, toast } =
-    useAppState();
+  const {
+    drawer,
+    closeDrawer,
+    detailEvent,
+    closeEventDetail,
+    confirmDialog,
+    closeConfirmDialog,
+    toast,
+    showToast,
+    categoriesLoading,
+    categoriesError,
+    eventsLoading,
+    eventsError,
+  } = useAppState();
+
+  const reportedErrors = useRef(new Set<string>());
+  useEffect(() => {
+    for (const msg of [categoriesError, eventsError]) {
+      if (msg && !reportedErrors.current.has(msg)) {
+        reportedErrors.current.add(msg);
+        showToast(msg);
+      }
+    }
+  }, [categoriesError, eventsError, showToast]);
+
+  const initialLoading = categoriesLoading || eventsLoading;
 
   return (
     <div className={styles.app}>
       <TopBar />
-      <div className={styles.layout}>
-        <Sidebar />
-        <CalendarView />
-        <RightPanel />
-      </div>
+      {initialLoading ? (
+        <div className={styles.loadingState}>Loading your calendar…</div>
+      ) : (
+        <div className={styles.layout}>
+          <Sidebar />
+          <CalendarView />
+          <RightPanel />
+        </div>
+      )}
 
       {drawer?.type === "fixed" && (
         <FixedEventForm prefill={drawer.prefill} onClose={closeDrawer} />

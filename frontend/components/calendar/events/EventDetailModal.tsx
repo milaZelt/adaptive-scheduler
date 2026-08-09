@@ -20,6 +20,7 @@ export default function EventDetailModal({ event, onClose }: EventDetailModalPro
     openFlexibleEventDrawer,
     showConfirmDialog,
     showToast,
+    deleteEvent,
   } = useAppState();
 
   const category = getCategory(event.categoryId);
@@ -46,9 +47,9 @@ export default function EventDetailModal({ event, onClose }: EventDetailModalPro
       message: `"${event.title}" will be removed from your calendar. This can't be undone.`,
       confirmLabel: "Delete",
       danger: true,
-      onConfirm: () => {
-        console.log("Would delete event:", event.id, event.title);
-        showToast("Deleted (see console) — no backend yet");
+      onConfirm: async () => {
+        const success = await deleteEvent(event.id);
+        if (success) showToast("Event deleted");
       },
     });
   }

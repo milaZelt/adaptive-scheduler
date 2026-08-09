@@ -5,8 +5,9 @@ import type { CalendarEvent, ViewType } from "@/lib/calendar/types";
 import { addDays, addMonths } from "@/lib/calendar/dateUtils";
 import { useCategories, type UseCategoriesResult } from "./useCategories";
 import { useEvents, type UseEventsResult } from "./useEvents";
+import { useNote, type UseNoteResult } from "./useNote";
 
-interface AppState extends UseCategoriesResult, UseEventsResult {
+interface AppState extends UseCategoriesResult, UseEventsResult, UseNoteResult {
   today: Date;
   currentDate: Date;
   currentView: ViewType;
@@ -21,7 +22,7 @@ interface AppState extends UseCategoriesResult, UseEventsResult {
   closeDrawer: () => void;
 
   detailEvent: CalendarEvent | null;
-  openEventDetail: (id: string) => void;
+  openEventDetail: (event: CalendarEvent) => void;
   closeEventDetail: () => void;
 
   confirmDialog: ConfirmDialogState | null;
@@ -47,9 +48,23 @@ interface ConfirmDialogState {
 
 const AppStateContext = createContext<AppState | undefined>(undefined);
 
-export function AppStateProvider({ children }: { children: ReactNode }) {
-  const categoriesApi = useCategories();
-  const eventsApi = useEvents();
+export function AppStateProvider({
+  userId,
+  children,
+}: {
+  userId: string;
+  children: ReactNode;
+}) {
+  const [toast, setToast] = useState<string | null>(null);
+
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 2200);
+  }, []);
+
+  const categoriesApi = useCategories(userId, showToast);
+  const eventsApi = useEvents(userId, showToast);
+  const noteApi = useNote(userId);
 
   const [today] = useState(() => new Date());
   const [currentDate, setCurrentDate] = useState<Date>(today);
@@ -58,7 +73,6 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [drawer, setDrawer] = useState<DrawerState | null>(null);
   const [detailEvent, setDetailEvent] = useState<CalendarEvent | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
 
   const setView = useCallback((v: ViewType) => setCurrentView(v), []);
 
@@ -85,13 +99,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
   const closeDrawer = useCallback(() => setDrawer(null), []);
 
-  const openEventDetail = useCallback(
-    (id: string) => {
-      const ev = eventsApi.getEventById(id);
-      if (ev) setDetailEvent(ev);
-    },
-    [eventsApi],
-  );
+  const openEventDetail = useCallback((event: CalendarEvent) => {
+    setDetailEvent(event);
+  }, []);
 
   const closeEventDetail = useCallback(() => setDetailEvent(null), []);
 
@@ -100,11 +110,6 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const closeConfirmDialog = useCallback(() => setConfirmDialog(null), []);
-
-  const showToast = useCallback((msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 2200);
-  }, []);
 
   // Wrap deleteCategory so it cascades into event removal (kept here since it
   // needs both hooks' setters — neither hook should know about the other).
@@ -121,6 +126,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     ...categoriesApi,
     deleteCategory: deleteCategoryCascade,
     ...eventsApi,
+    ...noteApi,
     today,
     currentDate,
     currentView,

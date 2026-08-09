@@ -20,7 +20,7 @@ export default function AllDayChip({ event }: AllDayChipProps) {
     <button
       className={styles.alldayChip}
       style={{ background: bg, borderLeftColor: border }}
-      onClick={() => openEventDetail(event.id)}
+      onClick={() => openEventDetail(event)}
     >
       {event.title}
     </button>
