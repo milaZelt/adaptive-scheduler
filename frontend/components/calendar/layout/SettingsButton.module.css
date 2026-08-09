@@ -21,31 +21,32 @@
   font-size: 1.05rem;
   color: var(--pink);
   font-style: italic;
-  margin-bottom: 1rem;
+  margin-bottom: 0.9rem;
+}
+
+.row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+.row:last-child {
+  border-bottom: none;
 }
 
 .fieldLabel {
   font-family: var(--font-sans);
   font-size: 0.66rem;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--muted);
-  margin-bottom: 0.4rem;
-  display: block;
 }
 
-.fieldInput {
-  width: 100%;
+.value {
   font-family: var(--font-sans);
   font-size: 0.85rem;
   color: var(--ink);
-  border: none;
-  border-bottom: 1px solid var(--line);
-  padding: 0.4rem 0.1rem;
-  outline: none;
-  margin-bottom: 1rem;
-  background: none;
-}
-.fieldInput:focus {
-  border-color: var(--pink);
+  white-space: nowrap;
 }

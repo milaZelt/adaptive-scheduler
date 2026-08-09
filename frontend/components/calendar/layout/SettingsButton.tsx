@@ -2,15 +2,12 @@
 
 import React, { useRef, useState } from "react";
 import Popover from "@/components/ui/Popover";
+import { fmtHour, timeInputToDecimal } from "@/lib/calendar/dateUtils";
 import styles from "./SettingsButton.module.css";
 
-interface SchedulingSettings {
-  startTime: string;
-  endTime: string;
-  minBreakMinutes: number;
-}
-
-const DEFAULT_SETTINGS: SchedulingSettings = {
+// Display-only for now — these will become editable once the scheduler
+// backend can actually respect them.
+const SCHEDULING_SETTINGS = {
   startTime: "08:00",
   endTime: "23:00",
   minBreakMinutes: 30,
@@ -38,7 +35,6 @@ function GearIcon() {
 export default function SettingsButton() {
   const btnRef = useRef<HTMLButtonElement>(null);
   const [anchor, setAnchor] = useState<DOMRect | null>(null);
-  const [settings, setSettings] = useState<SchedulingSettings>(DEFAULT_SETTINGS);
 
   return (
     <>
@@ -53,39 +49,25 @@ export default function SettingsButton() {
       </button>
 
       {anchor && (
-        <Popover anchorRect={anchor} width={240} onClose={() => setAnchor(null)}>
+        <Popover anchorRect={anchor} width={220} onClose={() => setAnchor(null)}>
           <div className={styles.title}>Settings</div>
 
-          <label className={styles.fieldLabel}>Allowed start time</label>
-          <input
-            className={styles.fieldInput}
-            type="time"
-            value={settings.startTime}
-            onChange={(e) => setSettings((s) => ({ ...s, startTime: e.target.value }))}
-          />
-
-          <label className={styles.fieldLabel}>Allowed end time</label>
-          <input
-            className={styles.fieldInput}
-            type="time"
-            value={settings.endTime}
-            onChange={(e) => setSettings((s) => ({ ...s, endTime: e.target.value }))}
-          />
-
-          <label className={styles.fieldLabel}>Minimum break (minutes)</label>
-          <input
-            className={styles.fieldInput}
-            type="number"
-            min={0}
-            step={5}
-            value={settings.minBreakMinutes}
-            onChange={(e) =>
-              setSettings((s) => ({
-                ...s,
-                minBreakMinutes: Math.max(0, Number(e.target.value)),
-              }))
-            }
-          />
+          <div className={styles.row}>
+            <span className={styles.fieldLabel}>Allowed start time</span>
+            <span className={styles.value}>
+              {fmtHour(timeInputToDecimal(SCHEDULING_SETTINGS.startTime))}
+            </span>
+          </div>
+          <div className={styles.row}>
+            <span className={styles.fieldLabel}>Allowed end time</span>
+            <span className={styles.value}>
+              {fmtHour(timeInputToDecimal(SCHEDULING_SETTINGS.endTime))}
+            </span>
+          </div>
+          <div className={styles.row}>
+            <span className={styles.fieldLabel}>Minimum break</span>
+            <span className={styles.value}>{SCHEDULING_SETTINGS.minBreakMinutes} min</span>
+          </div>
         </Popover>
       )}
     </>

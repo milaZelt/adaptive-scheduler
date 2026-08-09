@@ -84,15 +84,15 @@ export default function TimeGrid({ days }: TimeGridProps) {
             <div
               key={`col-${i}`}
               className={styles.gridDayCol}
-              style={{ gridRow: 3, gridColumn: i + 2, height: totalHeight }}
+              style={
+                {
+                  gridRow: 3,
+                  gridColumn: i + 2,
+                  height: totalHeight,
+                  "--row-height": `${ROW_HEIGHT}px`,
+                } as React.CSSProperties
+              }
             >
-              {hourMarks.map((h) => (
-                <div
-                  key={h}
-                  className={styles.gridHourLine}
-                  style={{ top: (h - START_HOUR) * ROW_HEIGHT }}
-                />
-              ))}
               {timedEvents.map((e) => (
                 <EventBlock key={e.id} event={e} />
               ))}

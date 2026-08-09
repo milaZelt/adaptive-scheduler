@@ -52,7 +52,7 @@
   min-height: 0;
   /* Default zoom for the calendar panel only — sidebars and top bar are
      unaffected. Browser zoom controls still work normally on top of this. */
-  zoom: 0.75;
+  zoom: 0.85;
 }
 
 /* CSS Grid time-grid — all-day row, day headers, and hourly columns share
@@ -107,16 +107,22 @@
   font-size: 0.64rem;
   color: var(--muted);
 }
-.gridHourLine {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: var(--line-soft);
-}
 .gridDayCol {
   position: relative;
-  border-left: 1px solid var(--line-soft);
+  /* One continuous background pattern instead of many separately-positioned
+     1px divs — under a fractional zoom (e.g. 0.85), N individually snapped
+     elements round to physical pixels inconsistently, making some hour
+     lines look thicker than others. A single repeating background is
+     rasterized as one texture and scales evenly regardless of zoom. */
+  background-image: repeating-linear-gradient(
+    to bottom,
+    var(--line) 0,
+    var(--line) 1px,
+    transparent 1px,
+    transparent var(--row-height)
+  );
+  background-position: top;
+  background-repeat: repeat-y;
 }
 .gridDayHead {
   font-family: var(--font-sans);
