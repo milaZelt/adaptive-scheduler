@@ -1,2 +1,6 @@
 ortools>=9.10
 pytest>=8.0
+fastapi>=0.141
+uvicorn[standard]>=0.30
+httpx2>=2.0
+python-dotenv>=1.0
