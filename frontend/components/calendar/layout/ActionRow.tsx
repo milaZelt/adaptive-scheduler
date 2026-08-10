@@ -6,7 +6,7 @@ import ContextMenu from "@/components/ui/ContextMenu";
 import styles from "./Sidebar.module.css";
 
 export default function ActionRow() {
-  const { openFixedEventDrawer, openFlexibleEventDrawer, showToast } = useAppState();
+  const { openFixedEventDrawer, openFlexibleEventDrawer, updateSchedule, updatingSchedule } = useAppState();
   const createBtnRef = useRef<HTMLButtonElement>(null);
   const [menuAnchor, setMenuAnchor] = useState<DOMRect | null>(null);
 
@@ -45,9 +45,10 @@ export default function ActionRow() {
 
       <button
         className={`${styles.linkBtn} sans`}
-        onClick={() => showToast("Regenerating your week…")}
+        disabled={updatingSchedule}
+        onClick={() => updateSchedule()}
       >
-        Regenerate <span>↻</span>
+        {updatingSchedule ? "Updating…" : "Update Schedule"} <span>↻</span>
       </button>
     </div>
   );

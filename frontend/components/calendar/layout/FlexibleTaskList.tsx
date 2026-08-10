@@ -6,13 +6,7 @@ import { useAppState } from "../state/AppStateContext";
 import styles from "./RightPanel.module.css";
 
 function estimateLabel(t: FlexibleTask): string {
-  if (t.timeEstimateMode === "single" && t.timeEstimateValue != null) {
-    return `${t.timeEstimateValue}h`;
-  }
-  if (t.timeEstimateMode === "range" && t.timeEstimateMin != null && t.timeEstimateMax != null) {
-    return `${t.timeEstimateMin}–${t.timeEstimateMax}h`;
-  }
-  return "";
+  return `${t.estimateHours}h`;
 }
 
 function deadlineLabel(iso: string): string {
@@ -48,8 +42,7 @@ export default function FlexibleTaskList() {
           <button className={styles.taskMain} onClick={() => openFlexibleEventDrawer(t)}>
             <span className={styles.taskTitle}>{t.title}</span>
             <span className={styles.taskMeta}>
-              {t.priority} · due {deadlineLabel(t.deadline)}
-              {estimateLabel(t) ? ` · ${estimateLabel(t)}` : ""}
+              {t.priority} · due {deadlineLabel(t.deadline)} · {estimateLabel(t)}
             </span>
           </button>
           <button

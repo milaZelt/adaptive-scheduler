@@ -9,6 +9,7 @@ import CalendarView from "./grid/CalendarView";
 import FixedEventForm from "./events/FixedEventForm";
 import FlexibleEventForm from "./events/FlexibleEventForm";
 import EventDetailModal from "./events/EventDetailModal";
+import ResolveSessionsModal from "./events/ResolveSessionsModal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Toast from "@/components/ui/Toast";
 import styles from "./CalendarApp.module.css";
@@ -33,25 +34,33 @@ function CalendarAppShell() {
     closeEventDetail,
     confirmDialog,
     closeConfirmDialog,
+    resolvePrompt,
+    closeResolvePrompt,
+    updateSchedule,
     toast,
     showToast,
     categoriesLoading,
     categoriesError,
     eventsLoading,
     eventsError,
+    flexibleTasksLoading,
+    flexibleTasksError,
+    scheduledSessionsLoading,
+    scheduledSessionsError,
   } = useAppState();
 
   const reportedErrors = useRef(new Set<string>());
   useEffect(() => {
-    for (const msg of [categoriesError, eventsError]) {
+    for (const msg of [categoriesError, eventsError, flexibleTasksError, scheduledSessionsError]) {
       if (msg && !reportedErrors.current.has(msg)) {
         reportedErrors.current.add(msg);
         showToast(msg);
       }
     }
-  }, [categoriesError, eventsError, showToast]);
+  }, [categoriesError, eventsError, flexibleTasksError, scheduledSessionsError, showToast]);
 
-  const initialLoading = categoriesLoading || eventsLoading;
+  const initialLoading =
+    categoriesLoading || eventsLoading || flexibleTasksLoading || scheduledSessionsLoading;
 
   return (
     <div className={styles.app}>
@@ -83,6 +92,17 @@ function CalendarAppShell() {
           danger={confirmDialog.danger}
           onConfirm={confirmDialog.onConfirm}
           onClose={closeConfirmDialog}
+        />
+      )}
+
+      {resolvePrompt && (
+        <ResolveSessionsModal
+          sessions={resolvePrompt}
+          onClose={closeResolvePrompt}
+          onResolved={() => {
+            closeResolvePrompt();
+            updateSchedule();
+          }}
         />
       )}
 

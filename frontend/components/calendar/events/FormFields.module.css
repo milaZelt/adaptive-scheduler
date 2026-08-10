@@ -74,35 +74,6 @@ select.fieldInput {
   cursor: pointer;
 }
 
-.toggleTabs {
-  display: flex;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  overflow: hidden;
-  margin-bottom: 1rem;
-}
-.toggleTab {
-  flex: 1;
-  text-align: center;
-  padding: 0.6rem 0.5rem;
-  font-family: var(--font-sans);
-  font-size: 0.78rem;
-  color: var(--muted);
-  cursor: pointer;
-  background: var(--white);
-  transition: all 0.2s;
-  border: none;
-  border-right: 1px solid var(--line);
-}
-.toggleTab:last-child {
-  border-right: none;
-}
-.toggleTab.active {
-  background: var(--pink-faint);
-  color: var(--pink);
-  font-weight: bold;
-}
-
 .horizonNotice {
   border: 1px solid var(--line);
   border-radius: 12px;

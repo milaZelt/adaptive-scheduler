@@ -1,19 +1,26 @@
 "use client";
 
 import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
-import type { CalendarEvent, FlexibleTask, ViewType } from "@/lib/calendar/types";
+import type { CalendarEvent, FlexibleTask, UnresolvedSessionInfo, ViewType } from "@/lib/calendar/types";
 import { addDays, addMonths } from "@/lib/calendar/dateUtils";
 import { useCategories, type UseCategoriesResult } from "./useCategories";
 import { useEvents, type UseEventsResult } from "./useEvents";
 import { useFlexibleTasks, type UseFlexibleTasksResult } from "./useFlexibleTasks";
+import { useScheduledSessions, type UseScheduledSessionsResult } from "./useScheduledSessions";
+import { useUpdateSchedule } from "./useUpdateSchedule";
 import { useNote, type UseNoteResult } from "./useNote";
 
 interface AppState
   extends UseCategoriesResult,
     UseEventsResult,
     UseFlexibleTasksResult,
+    UseScheduledSessionsResult,
     UseNoteResult {
   today: Date;
+  updatingSchedule: boolean;
+  resolvePrompt: UnresolvedSessionInfo[] | null;
+  closeResolvePrompt: () => void;
+  updateSchedule: () => Promise<void>;
   currentDate: Date;
   currentView: ViewType;
   setView: (v: ViewType) => void;
@@ -69,11 +76,19 @@ export function AppStateProvider({
   const categoriesApi = useCategories(userId, showToast);
   const eventsApi = useEvents(userId, showToast);
   const flexibleTasksApi = useFlexibleTasks(userId, showToast);
+  const scheduledSessionsApi = useScheduledSessions(userId, showToast);
   const noteApi = useNote(userId);
 
   const [today] = useState(() => new Date());
   const [currentDate, setCurrentDate] = useState<Date>(today);
   const [currentView, setCurrentView] = useState<ViewType>("week");
+
+  const { updatingSchedule, resolvePrompt, closeResolvePrompt, updateSchedule } = useUpdateSchedule({
+    today,
+    setFlexibleTasks: flexibleTasksApi.setFlexibleTasks,
+    setScheduledSessions: scheduledSessionsApi.setScheduledSessions,
+    showToast,
+  });
 
   const [drawer, setDrawer] = useState<DrawerState | null>(null);
   const [detailEvent, setDetailEvent] = useState<CalendarEvent | null>(null);
@@ -116,17 +131,18 @@ export function AppStateProvider({
 
   const closeConfirmDialog = useCallback(() => setConfirmDialog(null), []);
 
-  // Wrap deleteCategory so it cascades into event/task removal (kept here
-  // since it needs all three hooks' setters — none of them should know
+  // Wrap deleteCategory so it cascades into event/task/session removal (kept
+  // here since it needs all four hooks' setters — none of them should know
   // about the others).
   const deleteCategoryCascade = useCallback(
     (id: string): string => {
       const removedId = categoriesApi.deleteCategory(id);
       eventsApi.removeEventsByCategory(removedId);
       flexibleTasksApi.removeFlexibleTasksByCategory(removedId);
+      scheduledSessionsApi.removeScheduledSessionsByCategory(removedId);
       return removedId;
     },
-    [categoriesApi, eventsApi, flexibleTasksApi],
+    [categoriesApi, eventsApi, flexibleTasksApi, scheduledSessionsApi],
   );
 
   const value: AppState = {
@@ -134,8 +150,13 @@ export function AppStateProvider({
     deleteCategory: deleteCategoryCascade,
     ...eventsApi,
     ...flexibleTasksApi,
+    ...scheduledSessionsApi,
     ...noteApi,
     today,
+    updatingSchedule,
+    resolvePrompt,
+    closeResolvePrompt,
+    updateSchedule,
     currentDate,
     currentView,
     setView,

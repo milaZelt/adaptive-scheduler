@@ -6,6 +6,13 @@
       "runtimeExecutable": "bash",
       "runtimeArgs": ["-c", "cd frontend && npm run dev"],
       "port": 3000
+    },
+    {
+      "name": "solver-backend",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd backend && source .venv/bin/activate && uvicorn api.main:app --reload --port 8000"],
+      "port": 8000,
+      "url": "http://localhost:8000"
     }
   ]
 }

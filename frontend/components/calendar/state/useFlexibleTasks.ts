@@ -20,6 +20,10 @@ export interface UseFlexibleTasksResult {
   /** Cascades a category delete — removes every task tied to that category
    *  from local state (the DB relationship is ON DELETE CASCADE already). */
   removeFlexibleTasksByCategory: (categoryId: string) => void;
+  /** Replaces local state wholesale - used right after a successful Update
+   *  Schedule run, whose Route Handler already persisted the fresh rows
+   *  server-side and returns them for the client to adopt directly. */
+  setFlexibleTasks: (tasks: FlexibleTask[]) => void;
 }
 
 export function useFlexibleTasks(
@@ -27,7 +31,7 @@ export function useFlexibleTasks(
   onError: (message: string) => void,
 ): UseFlexibleTasksResult {
   const [supabase] = useState(() => createClient());
-  const [flexibleTasks, setFlexibleTasks] = useState<FlexibleTask[]>([]);
+  const [flexibleTasks, setFlexibleTasksState] = useState<FlexibleTask[]>([]);
   const [flexibleTasksLoading, setFlexibleTasksLoading] = useState(true);
   const [flexibleTasksError, setFlexibleTasksError] = useState<string | null>(null);
 
@@ -52,7 +56,7 @@ export function useFlexibleTasks(
         return;
       }
 
-      setFlexibleTasks(((data ?? []) as FlexibleTaskRow[]).map(flexibleTaskFromRow));
+      setFlexibleTasksState(((data ?? []) as FlexibleTaskRow[]).map(flexibleTaskFromRow));
       setFlexibleTasksLoading(false);
     }
 
@@ -82,7 +86,7 @@ export function useFlexibleTasks(
       }
 
       const created = flexibleTaskFromRow(data as FlexibleTaskRow);
-      setFlexibleTasks((cur) => [...cur, created]);
+      setFlexibleTasksState((cur) => [...cur, created]);
       return created;
     },
     [supabase, userId, onError],
@@ -91,13 +95,13 @@ export function useFlexibleTasks(
   const updateFlexibleTask = useCallback(
     async (id: string, patch: Partial<FlexibleTask>): Promise<boolean> => {
       const prev = flexibleTasks;
-      setFlexibleTasks((cur) => cur.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+      setFlexibleTasksState((cur) => cur.map((t) => (t.id === id ? { ...t, ...patch } : t)));
 
       const rowPatch = flexibleTaskToRowPatch(patch);
       const { error } = await supabase.from("flexible_tasks").update(rowPatch).eq("id", id);
 
       if (error) {
-        setFlexibleTasks(prev);
+        setFlexibleTasksState(prev);
         onError("Couldn't save your changes. Please try again.");
         return false;
       }
@@ -109,12 +113,12 @@ export function useFlexibleTasks(
   const deleteFlexibleTask = useCallback(
     async (id: string): Promise<boolean> => {
       const prev = flexibleTasks;
-      setFlexibleTasks((cur) => cur.filter((t) => t.id !== id));
+      setFlexibleTasksState((cur) => cur.filter((t) => t.id !== id));
 
       const { error } = await supabase.from("flexible_tasks").delete().eq("id", id);
 
       if (error) {
-        setFlexibleTasks(prev);
+        setFlexibleTasksState(prev);
         onError("Couldn't delete that task. Please try again.");
         return false;
       }
@@ -124,7 +128,11 @@ export function useFlexibleTasks(
   );
 
   const removeFlexibleTasksByCategory = useCallback((categoryId: string) => {
-    setFlexibleTasks((cur) => cur.filter((t) => t.categoryId !== categoryId));
+    setFlexibleTasksState((cur) => cur.filter((t) => t.categoryId !== categoryId));
+  }, []);
+
+  const setFlexibleTasks = useCallback((tasks: FlexibleTask[]) => {
+    setFlexibleTasksState(tasks);
   }, []);
 
   return {
@@ -136,5 +144,6 @@ export function useFlexibleTasks(
     updateFlexibleTask,
     deleteFlexibleTask,
     removeFlexibleTasksByCategory,
+    setFlexibleTasks,
   };
 }

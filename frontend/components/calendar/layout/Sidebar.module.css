@@ -61,6 +61,14 @@
   color: var(--pink);
   border-color: var(--pink);
 }
+.linkBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.linkBtn:disabled:hover {
+  color: var(--ink);
+  border-color: var(--line);
+}
 
 .sectionHead {
   display: flex;

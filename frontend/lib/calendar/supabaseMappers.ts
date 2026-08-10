@@ -4,10 +4,12 @@ import type {
   CustomRecurrence,
   EventType,
   FlexibleTask,
+  PlacementReason,
   Priority,
   RepeatOption,
+  ScheduledSession,
   SchedulingStatus,
-  TimeEstimateMode,
+  SessionCompletionStatus,
 } from "./types";
 
 export interface CategoryRow {
@@ -89,10 +91,7 @@ export interface FlexibleTaskRow {
   title: string;
   priority: Priority;
   deadline: string;
-  time_estimate_mode: TimeEstimateMode;
-  time_estimate_value: number | string | null;
-  time_estimate_min: number | string | null;
-  time_estimate_max: number | string | null;
+  estimate_hours: number | string;
   split_ok: boolean;
   session_min: number | string | null;
   session_max: number | string | null;
@@ -107,10 +106,7 @@ export function flexibleTaskFromRow(row: FlexibleTaskRow): FlexibleTask {
     categoryId: row.category_id,
     priority: row.priority,
     deadline: row.deadline,
-    timeEstimateMode: row.time_estimate_mode,
-    timeEstimateValue: toNumberOrNull(row.time_estimate_value),
-    timeEstimateMin: toNumberOrNull(row.time_estimate_min),
-    timeEstimateMax: toNumberOrNull(row.time_estimate_max),
+    estimateHours: Number(row.estimate_hours),
     splitOk: row.split_ok,
     sessionMin: toNumberOrNull(row.session_min),
     sessionMax: toNumberOrNull(row.session_max),
@@ -126,14 +122,36 @@ export function flexibleTaskToRowPatch(patch: Partial<FlexibleTask>): Record<str
   if (patch.categoryId !== undefined) row.category_id = patch.categoryId;
   if (patch.priority !== undefined) row.priority = patch.priority;
   if (patch.deadline !== undefined) row.deadline = patch.deadline;
-  if (patch.timeEstimateMode !== undefined) row.time_estimate_mode = patch.timeEstimateMode;
-  if (patch.timeEstimateValue !== undefined) row.time_estimate_value = patch.timeEstimateValue;
-  if (patch.timeEstimateMin !== undefined) row.time_estimate_min = patch.timeEstimateMin;
-  if (patch.timeEstimateMax !== undefined) row.time_estimate_max = patch.timeEstimateMax;
+  if (patch.estimateHours !== undefined) row.estimate_hours = patch.estimateHours;
   if (patch.splitOk !== undefined) row.split_ok = patch.splitOk;
   if (patch.sessionMin !== undefined) row.session_min = patch.sessionMin;
   if (patch.sessionMax !== undefined) row.session_max = patch.sessionMax;
   if (patch.description !== undefined) row.description = patch.description || null;
   if (patch.schedulingStatus !== undefined) row.scheduling_status = patch.schedulingStatus;
   return row;
+}
+
+export interface ScheduledSessionRow {
+  id: string;
+  user_id: string;
+  task_id: string;
+  category_id: string;
+  date: string;
+  start_time: number | string;
+  end_time: number | string;
+  placement_reason: PlacementReason | null;
+  completion_status: SessionCompletionStatus;
+}
+
+export function scheduledSessionFromRow(row: ScheduledSessionRow): ScheduledSession {
+  return {
+    id: row.id,
+    taskId: row.task_id,
+    categoryId: row.category_id,
+    date: row.date,
+    start: Number(row.start_time),
+    end: Number(row.end_time),
+    placementReason: row.placement_reason,
+    completionStatus: row.completion_status,
+  };
 }

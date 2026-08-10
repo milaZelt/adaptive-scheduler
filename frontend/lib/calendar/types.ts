@@ -15,7 +15,6 @@ export type RepeatOption =
   | "weekday"
   | "custom";
 export type Priority = "High" | "Medium" | "Low";
-export type TimeEstimateMode = "single" | "range";
 export type ViewType = "day" | "week" | "month";
 
 export type RecurrenceUnit = "day" | "week" | "month" | "year";
@@ -73,13 +72,52 @@ export interface FlexibleTask {
   categoryId: string;
   priority: Priority;
   deadline: string; // ISO 'YYYY-MM-DD', always within the current planning horizon
-  timeEstimateMode: TimeEstimateMode;
-  timeEstimateValue: number | null;
-  timeEstimateMin: number | null;
-  timeEstimateMax: number | null;
+  estimateHours: number; // required duration - the user decides how much, Nextly decides when
   splitOk: boolean;
   sessionMin: number | null;
   sessionMax: number | null;
   description?: string;
   schedulingStatus: SchedulingStatus;
 }
+
+export type SessionCompletionStatus = "unresolved" | "completed" | "missed";
+
+/** Structured facts captured at solve time - templated into an explanation
+ *  at display time (Ticket 6). Captured then because "why" is a claim about
+ *  calendar state at the moment of solving, not reconstructable later. */
+export interface PlacementReason {
+  priority: Priority;
+  deadline: string; // the task's deadline at solve time, ISO 'YYYY-MM-DD'
+  sessionIndex: number; // 1-based - which of this task's sessions this is
+  sessionCount: number; // how many sessions this task was split into
+}
+
+/** One placed block of a flexible task - solver output. Read-only in V1
+ *  beyond completionStatus; edit/delete happens through the underlying
+ *  FlexibleTask or a fresh Update Schedule run, never on this row directly. */
+export interface ScheduledSession {
+  id: string;
+  taskId: string;
+  categoryId: string;
+  date: string; // ISO 'YYYY-MM-DD'
+  start: number; // decimal hour
+  end: number;
+  placementReason: PlacementReason | null;
+  completionStatus: SessionCompletionStatus;
+}
+
+/** A past scheduled session the user hasn't answered Completed/Missed for
+ *  yet - blocks Update Schedule until resolved (decisions record). */
+export interface UnresolvedSessionInfo {
+  id: string;
+  taskTitle: string;
+  date: string;
+  start: number;
+  end: number;
+}
+
+/** POST /api/update-schedule response. */
+export type UpdateScheduleResponse =
+  | { status: "blocked"; unresolvedSessions: UnresolvedSessionInfo[] }
+  | { status: "ok"; flexibleTasks: FlexibleTask[]; scheduledSessions: ScheduledSession[] }
+  | { status: "error"; message: string };

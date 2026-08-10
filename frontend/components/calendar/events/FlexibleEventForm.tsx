@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import type { FlexibleTask, Priority, TimeEstimateMode } from "@/lib/calendar/types";
+import type { FlexibleTask, Priority } from "@/lib/calendar/types";
 import { useAppState } from "../state/AppStateContext";
 import { addDays, toISODate } from "@/lib/calendar/dateUtils";
 import { PLANNING_HORIZON_DAYS } from "@/lib/calendar/constants";
@@ -21,21 +21,8 @@ export default function FlexibleEventForm({ prefill, onClose }: FlexibleEventFor
 
   const [title, setTitle] = useState(prefill?.title ?? "");
   const [deadline, setDeadline] = useState(prefill?.deadline ?? "");
-  const [estMode, setEstMode] = useState<TimeEstimateMode>(prefill?.timeEstimateMode ?? "single");
-  const [singleVal, setSingleVal] = useState(
-    prefill?.timeEstimateMode === "single" && prefill.timeEstimateValue != null
-      ? String(prefill.timeEstimateValue)
-      : "",
-  );
-  const [rangeMin, setRangeMin] = useState(
-    prefill?.timeEstimateMode === "range" && prefill.timeEstimateMin != null
-      ? String(prefill.timeEstimateMin)
-      : "",
-  );
-  const [rangeMax, setRangeMax] = useState(
-    prefill?.timeEstimateMode === "range" && prefill.timeEstimateMax != null
-      ? String(prefill.timeEstimateMax)
-      : "",
+  const [estimateHours, setEstimateHours] = useState(
+    prefill?.estimateHours != null ? String(prefill.estimateHours) : "",
   );
   const [splitOk, setSplitOk] = useState(prefill?.splitOk ?? false);
   const [sessionMin, setSessionMin] = useState(
@@ -63,10 +50,7 @@ export default function FlexibleEventForm({ prefill, onClose }: FlexibleEventFor
     parsedDeadline && !isNaN(parsedDeadline.getTime()) && toISODate(parsedDeadline) > horizonEndISO,
   );
 
-  const timeValid =
-    estMode === "single"
-      ? singleVal !== "" && Number(singleVal) > 0
-      : rangeMin !== "" && rangeMax !== "" && Number(rangeMax) > Number(rangeMin) && Number(rangeMin) > 0;
+  const timeValid = estimateHours !== "" && Number(estimateHours) > 0;
   const splitValid =
     !splitOk ||
     (sessionMin !== "" &&
@@ -86,10 +70,7 @@ export default function FlexibleEventForm({ prefill, onClose }: FlexibleEventFor
       categoryId,
       priority: priority as Priority,
       deadline,
-      timeEstimateMode: estMode,
-      timeEstimateValue: estMode === "single" ? Number(singleVal) : null,
-      timeEstimateMin: estMode === "range" ? Number(rangeMin) : null,
-      timeEstimateMax: estMode === "range" ? Number(rangeMax) : null,
+      estimateHours: Number(estimateHours),
       splitOk,
       sessionMin: splitOk ? Number(sessionMin) : null,
       sessionMax: splitOk ? Number(sessionMax) : null,
@@ -160,57 +141,17 @@ export default function FlexibleEventForm({ prefill, onClose }: FlexibleEventFor
 
       <div className={fieldStyles.field}>
         <div className={fieldStyles.fieldLabel}>
-          <span className={fieldStyles.req}>*</span>Time Estimate
+          <span className={fieldStyles.req}>*</span>Time Estimate (hrs)
         </div>
-        <div className={fieldStyles.toggleTabs}>
-          <button
-            type="button"
-            className={`${fieldStyles.toggleTab} ${estMode === "single" ? fieldStyles.active : ""}`}
-            onClick={() => setEstMode("single")}
-          >
-            I know how long
-          </button>
-          <button
-            type="button"
-            className={`${fieldStyles.toggleTab} ${estMode === "range" ? fieldStyles.active : ""}`}
-            onClick={() => setEstMode("range")}
-          >
-            Give me a range
-          </button>
-        </div>
-
-        {estMode === "single" ? (
-          <input
-            className={fieldStyles.fieldInput}
-            type="number"
-            min={0.25}
-            step={0.25}
-            placeholder="Hours"
-            value={singleVal}
-            onChange={(e) => setSingleVal(e.target.value)}
-          />
-        ) : (
-          <div className={fieldStyles.fieldRow}>
-            <input
-              className={fieldStyles.fieldInput}
-              type="number"
-              min={0.25}
-              step={0.25}
-              placeholder="Min hours"
-              value={rangeMin}
-              onChange={(e) => setRangeMin(e.target.value)}
-            />
-            <input
-              className={fieldStyles.fieldInput}
-              type="number"
-              min={0.25}
-              step={0.25}
-              placeholder="Max hours"
-              value={rangeMax}
-              onChange={(e) => setRangeMax(e.target.value)}
-            />
-          </div>
-        )}
+        <input
+          className={fieldStyles.fieldInput}
+          type="number"
+          min={0.25}
+          step={0.25}
+          placeholder="Hours"
+          value={estimateHours}
+          onChange={(e) => setEstimateHours(e.target.value)}
+        />
       </div>
 
       <div className={fieldStyles.checkRow}>
