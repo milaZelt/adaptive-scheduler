@@ -44,16 +44,6 @@ export interface CalendarEvent {
   description?: string;
   repeat?: RepeatOption;
   customRecurrence?: CustomRecurrence;
-
-  // flexible-event-only fields
-  priority?: Priority;
-  timeEstimateMode?: TimeEstimateMode;
-  timeEstimateValue?: number | null;
-  timeEstimateMin?: number | null;
-  timeEstimateMax?: number | null;
-  splitOk?: boolean;
-  sessionMin?: number | null;
-  sessionMax?: number | null;
 }
 
 /** Shape logged to console on tear-sheet Save (no backend submit yet). */
@@ -72,11 +62,17 @@ export interface FixedEventFormState {
   categoryId: string;
 }
 
-export interface FlexibleEventFormState {
-  mode: "create" | "edit";
-  id: string | null;
-  type: "flexible";
+export type SchedulingStatus = "not_yet_scheduled" | "scheduled" | "couldnt_fit" | "overdue";
+
+/** A flexible task definition - solver input. Never has a date/time of its
+ *  own; once Update Schedule places it, the placement lives as a separate
+ *  scheduled_sessions row (Ticket 4), not on this record. */
+export interface FlexibleTask {
+  id: string;
   title: string;
+  categoryId: string;
+  priority: Priority;
+  deadline: string; // ISO 'YYYY-MM-DD', always within the current planning horizon
   timeEstimateMode: TimeEstimateMode;
   timeEstimateValue: number | null;
   timeEstimateMin: number | null;
@@ -84,7 +80,6 @@ export interface FlexibleEventFormState {
   splitOk: boolean;
   sessionMin: number | null;
   sessionMax: number | null;
-  description: string;
-  priority: Priority | "";
-  categoryId: string;
+  description?: string;
+  schedulingStatus: SchedulingStatus;
 }

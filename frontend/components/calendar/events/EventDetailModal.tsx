@@ -14,14 +14,8 @@ interface EventDetailModalProps {
 }
 
 export default function EventDetailModal({ event, onClose }: EventDetailModalProps) {
-  const {
-    getCategory,
-    openFixedEventDrawer,
-    openFlexibleEventDrawer,
-    showConfirmDialog,
-    showToast,
-    deleteEvent,
-  } = useAppState();
+  const { getCategory, openFixedEventDrawer, showConfirmDialog, showToast, deleteEvent } =
+    useAppState();
 
   const category = getCategory(event.categoryId);
   const timeStr =
@@ -36,8 +30,7 @@ export default function EventDetailModal({ event, onClose }: EventDetailModalPro
 
   function handleEdit() {
     onClose();
-    if (event.type === "flexible") openFlexibleEventDrawer(event);
-    else openFixedEventDrawer(event);
+    openFixedEventDrawer(event);
   }
 
   function handleDelete() {
@@ -58,10 +51,7 @@ export default function EventDetailModal({ event, onClose }: EventDetailModalPro
     <Modal onClose={onClose}>
       <div className={styles.catRow}>
         <span className={styles.dot} style={{ background: category?.color ?? "#ccc" }} />
-        <span className={styles.catName}>
-          {category?.name ?? "Uncategorized"}
-          {event.type === "flexible" ? " · Flexible" : ""}
-        </span>
+        <span className={styles.catName}>{category?.name ?? "Uncategorized"}</span>
       </div>
       <div className={styles.title}>{event.title}</div>
       <div className={styles.time}>

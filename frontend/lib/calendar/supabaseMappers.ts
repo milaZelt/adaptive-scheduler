@@ -1,4 +1,14 @@
-import type { CalendarEvent, Category, CustomRecurrence, EventType, RepeatOption } from "./types";
+import type {
+  CalendarEvent,
+  Category,
+  CustomRecurrence,
+  EventType,
+  FlexibleTask,
+  Priority,
+  RepeatOption,
+  SchedulingStatus,
+  TimeEstimateMode,
+} from "./types";
 
 export interface CategoryRow {
   id: string;
@@ -69,5 +79,61 @@ export function eventToRowPatch(
   if (patch.description !== undefined) row.description = patch.description || null;
   if (patch.repeat !== undefined) row.repeat = patch.repeat;
   if (patch.customRecurrence !== undefined) row.custom_recurrence = patch.customRecurrence ?? null;
+  return row;
+}
+
+export interface FlexibleTaskRow {
+  id: string;
+  user_id: string;
+  category_id: string;
+  title: string;
+  priority: Priority;
+  deadline: string;
+  time_estimate_mode: TimeEstimateMode;
+  time_estimate_value: number | string | null;
+  time_estimate_min: number | string | null;
+  time_estimate_max: number | string | null;
+  split_ok: boolean;
+  session_min: number | string | null;
+  session_max: number | string | null;
+  description: string | null;
+  scheduling_status: SchedulingStatus;
+}
+
+export function flexibleTaskFromRow(row: FlexibleTaskRow): FlexibleTask {
+  return {
+    id: row.id,
+    title: row.title,
+    categoryId: row.category_id,
+    priority: row.priority,
+    deadline: row.deadline,
+    timeEstimateMode: row.time_estimate_mode,
+    timeEstimateValue: toNumberOrNull(row.time_estimate_value),
+    timeEstimateMin: toNumberOrNull(row.time_estimate_min),
+    timeEstimateMax: toNumberOrNull(row.time_estimate_max),
+    splitOk: row.split_ok,
+    sessionMin: toNumberOrNull(row.session_min),
+    sessionMax: toNumberOrNull(row.session_max),
+    description: row.description ?? undefined,
+    schedulingStatus: row.scheduling_status,
+  };
+}
+
+/** Partial FlexibleTask -> snake_case row patch, for inserts/updates. */
+export function flexibleTaskToRowPatch(patch: Partial<FlexibleTask>): Record<string, unknown> {
+  const row: Record<string, unknown> = {};
+  if (patch.title !== undefined) row.title = patch.title;
+  if (patch.categoryId !== undefined) row.category_id = patch.categoryId;
+  if (patch.priority !== undefined) row.priority = patch.priority;
+  if (patch.deadline !== undefined) row.deadline = patch.deadline;
+  if (patch.timeEstimateMode !== undefined) row.time_estimate_mode = patch.timeEstimateMode;
+  if (patch.timeEstimateValue !== undefined) row.time_estimate_value = patch.timeEstimateValue;
+  if (patch.timeEstimateMin !== undefined) row.time_estimate_min = patch.timeEstimateMin;
+  if (patch.timeEstimateMax !== undefined) row.time_estimate_max = patch.timeEstimateMax;
+  if (patch.splitOk !== undefined) row.split_ok = patch.splitOk;
+  if (patch.sessionMin !== undefined) row.session_min = patch.sessionMin;
+  if (patch.sessionMax !== undefined) row.session_max = patch.sessionMax;
+  if (patch.description !== undefined) row.description = patch.description || null;
+  if (patch.schedulingStatus !== undefined) row.scheduling_status = patch.schedulingStatus;
   return row;
 }

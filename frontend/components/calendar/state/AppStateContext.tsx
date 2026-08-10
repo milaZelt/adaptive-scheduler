@@ -1,13 +1,18 @@
 "use client";
 
 import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
-import type { CalendarEvent, ViewType } from "@/lib/calendar/types";
+import type { CalendarEvent, FlexibleTask, ViewType } from "@/lib/calendar/types";
 import { addDays, addMonths } from "@/lib/calendar/dateUtils";
 import { useCategories, type UseCategoriesResult } from "./useCategories";
 import { useEvents, type UseEventsResult } from "./useEvents";
+import { useFlexibleTasks, type UseFlexibleTasksResult } from "./useFlexibleTasks";
 import { useNote, type UseNoteResult } from "./useNote";
 
-interface AppState extends UseCategoriesResult, UseEventsResult, UseNoteResult {
+interface AppState
+  extends UseCategoriesResult,
+    UseEventsResult,
+    UseFlexibleTasksResult,
+    UseNoteResult {
   today: Date;
   currentDate: Date;
   currentView: ViewType;
@@ -18,7 +23,7 @@ interface AppState extends UseCategoriesResult, UseEventsResult, UseNoteResult {
   // Floating UI (drawer for event forms, modal for detail/confirm)
   drawer: DrawerState | null;
   openFixedEventDrawer: (prefill?: CalendarEvent) => void;
-  openFlexibleEventDrawer: (prefill?: CalendarEvent) => void;
+  openFlexibleEventDrawer: (prefill?: FlexibleTask) => void;
   closeDrawer: () => void;
 
   detailEvent: CalendarEvent | null;
@@ -33,10 +38,9 @@ interface AppState extends UseCategoriesResult, UseEventsResult, UseNoteResult {
   showToast: (msg: string) => void;
 }
 
-interface DrawerState {
-  type: "fixed" | "flexible";
-  prefill?: CalendarEvent;
-}
+type DrawerState =
+  | { type: "fixed"; prefill?: CalendarEvent }
+  | { type: "flexible"; prefill?: FlexibleTask };
 
 interface ConfirmDialogState {
   title: string;
@@ -64,6 +68,7 @@ export function AppStateProvider({
 
   const categoriesApi = useCategories(userId, showToast);
   const eventsApi = useEvents(userId, showToast);
+  const flexibleTasksApi = useFlexibleTasks(userId, showToast);
   const noteApi = useNote(userId);
 
   const [today] = useState(() => new Date());
@@ -93,7 +98,7 @@ export function AppStateProvider({
     setDrawer({ type: "fixed", prefill });
   }, []);
 
-  const openFlexibleEventDrawer = useCallback((prefill?: CalendarEvent) => {
+  const openFlexibleEventDrawer = useCallback((prefill?: FlexibleTask) => {
     setDrawer({ type: "flexible", prefill });
   }, []);
 
@@ -111,21 +116,24 @@ export function AppStateProvider({
 
   const closeConfirmDialog = useCallback(() => setConfirmDialog(null), []);
 
-  // Wrap deleteCategory so it cascades into event removal (kept here since it
-  // needs both hooks' setters — neither hook should know about the other).
+  // Wrap deleteCategory so it cascades into event/task removal (kept here
+  // since it needs all three hooks' setters — none of them should know
+  // about the others).
   const deleteCategoryCascade = useCallback(
     (id: string): string => {
       const removedId = categoriesApi.deleteCategory(id);
       eventsApi.removeEventsByCategory(removedId);
+      flexibleTasksApi.removeFlexibleTasksByCategory(removedId);
       return removedId;
     },
-    [categoriesApi, eventsApi],
+    [categoriesApi, eventsApi, flexibleTasksApi],
   );
 
   const value: AppState = {
     ...categoriesApi,
     deleteCategory: deleteCategoryCascade,
     ...eventsApi,
+    ...flexibleTasksApi,
     ...noteApi,
     today,
     currentDate,
