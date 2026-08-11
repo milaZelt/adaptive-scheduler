@@ -55,6 +55,18 @@ interface AppState
 
   toast: string | null;
   showToast: (msg: string) => void;
+
+  /** Errors/system problems, persisted in the Status area until dismissed -
+   *  unlike showToast, which is for transient action confirmations that are
+   *  fine to disappear on their own. */
+  systemMessages: SystemMessage[];
+  reportSystemError: (text: string) => void;
+  dismissSystemMessage: (id: string) => void;
+}
+
+export interface SystemMessage {
+  id: string;
+  text: string;
 }
 
 type DrawerState =
@@ -85,10 +97,24 @@ export function AppStateProvider({
     setTimeout(() => setToast(null), 2200);
   }, []);
 
-  const categoriesApi = useCategories(userId, showToast);
-  const eventsApi = useEvents(userId, showToast);
-  const flexibleTasksApi = useFlexibleTasks(userId, showToast);
-  const scheduledSessionsApi = useScheduledSessions(userId, showToast);
+  const [systemMessages, setSystemMessages] = useState<SystemMessage[]>([]);
+
+  const reportSystemError = useCallback((text: string) => {
+    setSystemMessages((cur) => {
+      if (cur.some((m) => m.text === text)) return cur;
+      const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      return [...cur, { id, text }];
+    });
+  }, []);
+
+  const dismissSystemMessage = useCallback((id: string) => {
+    setSystemMessages((cur) => cur.filter((m) => m.id !== id));
+  }, []);
+
+  const categoriesApi = useCategories(userId, reportSystemError);
+  const eventsApi = useEvents(userId, reportSystemError);
+  const flexibleTasksApi = useFlexibleTasks(userId, reportSystemError);
+  const scheduledSessionsApi = useScheduledSessions(userId, reportSystemError);
   const scheduleRunsApi = useScheduleRuns(userId);
   const noteApi = useNote(userId);
 
@@ -102,6 +128,7 @@ export function AppStateProvider({
     setScheduledSessions: scheduledSessionsApi.setScheduledSessions,
     setLastRunAt: scheduleRunsApi.setLastRunAt,
     showToast,
+    reportSystemError,
   });
 
   const [drawer, setDrawer] = useState<DrawerState | null>(null);
@@ -178,12 +205,29 @@ export function AppStateProvider({
     [flexibleTasksApi, scheduledSessionsApi],
   );
 
+  // Recategorizing a task must also update its already-placed sessions'
+  // local categoryId - a DB trigger (migration 0009) keeps the server-side
+  // denormalized copy in sync, but the currently-open tab's own local state
+  // needs the same update or the grid keeps showing the old color/visibility
+  // until the next reload.
+  const updateFlexibleTaskCascade = useCallback(
+    async (id: string, patch: Partial<FlexibleTask>): Promise<boolean> => {
+      const success = await flexibleTasksApi.updateFlexibleTask(id, patch);
+      if (success && patch.categoryId !== undefined) {
+        scheduledSessionsApi.updateScheduledSessionsCategoryForTask(id, patch.categoryId);
+      }
+      return success;
+    },
+    [flexibleTasksApi, scheduledSessionsApi],
+  );
+
   const value: AppState = {
     ...categoriesApi,
     deleteCategory: deleteCategoryCascade,
     ...eventsApi,
     ...flexibleTasksApi,
     deleteFlexibleTask: deleteFlexibleTaskCascade,
+    updateFlexibleTask: updateFlexibleTaskCascade,
     ...scheduledSessionsApi,
     ...scheduleRunsApi,
     ...noteApi,
@@ -212,6 +256,9 @@ export function AppStateProvider({
     closeConfirmDialog,
     toast,
     showToast,
+    systemMessages,
+    reportSystemError,
+    dismissSystemMessage,
   };
 
   return <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>;

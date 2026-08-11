@@ -12,6 +12,7 @@ import {
 import Drawer from "./Drawer";
 import CustomRepeatPanel from "./CustomRepeatPanel";
 import Button from "@/components/ui/Button";
+import Select, { type SelectOption } from "@/components/ui/Select";
 import fieldStyles from "./FormFields.module.css";
 
 const STATIC_REPEAT_OPTIONS: Exclude<RepeatOption, "custom">[] = [
@@ -64,6 +65,11 @@ export default function FixedEventForm({ prefill, onClose }: FixedEventFormProps
   const recurrenceValid = repeat !== "custom" || isValidCustomRecurrence(customRecurrence);
   const canSave = Boolean(title.trim() && date && timeValid && categoryId && recurrenceValid);
 
+  const repeatOptions: SelectOption[] = [
+    ...STATIC_REPEAT_OPTIONS.map((opt) => ({ value: opt, label: repeatOptionLabel(opt, dateForLabels) })),
+    { value: "custom", label: "Custom…" },
+  ];
+
   async function handleSave() {
     if (!canSave || saving) return;
     setSaving(true);
@@ -94,7 +100,7 @@ export default function FixedEventForm({ prefill, onClose }: FixedEventFormProps
 
   return (
     <Drawer
-      title={isEdit ? "Edit Event" : "New Fixed Event"}
+      title={isEdit ? "Edit Event" : "New Event"}
       onClose={onClose}
       footer={
         <Button variant="primary" disabled={!canSave || saving} onClick={handleSave}>
@@ -166,18 +172,11 @@ export default function FixedEventForm({ prefill, onClose }: FixedEventFormProps
 
       <div className={fieldStyles.field}>
         <div className={fieldStyles.fieldLabel}>Repeat</div>
-        <select
-          className={fieldStyles.fieldInput}
+        <Select
           value={repeat}
-          onChange={(e) => setRepeat(e.target.value as RepeatOption)}
-        >
-          {STATIC_REPEAT_OPTIONS.map((opt) => (
-            <option key={opt} value={opt}>
-              {repeatOptionLabel(opt, dateForLabels)}
-            </option>
-          ))}
-          <option value="custom">Custom...</option>
-        </select>
+          onChange={(v) => setRepeat(v as RepeatOption)}
+          options={repeatOptions}
+        />
 
         {repeat === "custom" && (
           <CustomRepeatPanel value={customRecurrence} onChange={setCustomRecurrence} />
@@ -198,17 +197,12 @@ export default function FixedEventForm({ prefill, onClose }: FixedEventFormProps
         <div className={fieldStyles.fieldLabel}>
           <span className={fieldStyles.req}>*</span>Calendar
         </div>
-        <select
-          className={fieldStyles.fieldInput}
+        <Select
           value={categoryId}
-          onChange={(e) => setCategoryId(e.target.value)}
-        >
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+          onChange={setCategoryId}
+          options={categories.map((c) => ({ value: c.id, label: c.name, color: c.color }))}
+          placeholder="Select calendar"
+        />
       </div>
     </Drawer>
   );

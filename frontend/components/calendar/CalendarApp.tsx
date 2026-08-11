@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect } from "react";
 import { AppStateProvider, useAppState } from "./state/AppStateContext";
 import TopBar from "./layout/TopBar";
 import Sidebar from "./layout/Sidebar";
@@ -41,7 +41,7 @@ function CalendarAppShell() {
     closeResolvePrompt,
     updateSchedule,
     toast,
-    showToast,
+    reportSystemError,
     categoriesLoading,
     categoriesError,
     eventsLoading,
@@ -54,7 +54,6 @@ function CalendarAppShell() {
     lastRunAtError,
   } = useAppState();
 
-  const reportedErrors = useRef(new Set<string>());
   useEffect(() => {
     for (const msg of [
       categoriesError,
@@ -63,12 +62,9 @@ function CalendarAppShell() {
       scheduledSessionsError,
       lastRunAtError,
     ]) {
-      if (msg && !reportedErrors.current.has(msg)) {
-        reportedErrors.current.add(msg);
-        showToast(msg);
-      }
+      if (msg) reportSystemError(msg);
     }
-  }, [categoriesError, eventsError, flexibleTasksError, scheduledSessionsError, lastRunAtError, showToast]);
+  }, [categoriesError, eventsError, flexibleTasksError, scheduledSessionsError, lastRunAtError, reportSystemError]);
 
   const initialLoading =
     categoriesLoading ||

@@ -30,23 +30,41 @@
 .fieldInput:focus {
   border-color: var(--pink);
 }
+.fieldInput::placeholder {
+  color: var(--muted);
+  opacity: 1; /* Firefox otherwise dims placeholder text further by default */
+}
 textarea.fieldInput {
   resize: vertical;
   min-height: 70px;
   font-family: var(--font-sans);
   line-height: 1.5;
 }
-select.fieldInput {
-  cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  background: var(--white)
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 4.5L6 8l3.5-3.5' fill='none' stroke='%239c8589' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
-    no-repeat right 0.15rem center;
-  background-size: 11px;
-  padding-right: 1.2rem;
+
+/* Native number-input spinner arrows read as raw browser chrome next to the
+   rest of this form's plain underline styling. */
+.fieldInput[type="number"] {
+  -moz-appearance: textfield;
 }
+.fieldInput[type="number"]::-webkit-outer-spin-button,
+.fieldInput[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Native date/time picker icons default to stark black - dim them to match
+   the form's muted/pink accent language, brightening only on hover. */
+.fieldInput[type="date"]::-webkit-calendar-picker-indicator,
+.fieldInput[type="time"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 0.2s;
+}
+.fieldInput[type="date"]:hover::-webkit-calendar-picker-indicator,
+.fieldInput[type="time"]:hover::-webkit-calendar-picker-indicator {
+  opacity: 1;
+}
+
 .fieldRow {
   display: flex;
   gap: 1rem;

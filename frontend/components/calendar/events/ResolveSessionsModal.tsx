@@ -23,7 +23,7 @@ function dateLabel(iso: string): string {
 }
 
 export default function ResolveSessionsModal({ sessions, onClose, onResolved }: ResolveSessionsModalProps) {
-  const { markSessionCompletion, showToast } = useAppState();
+  const { markSessionCompletion, reportSystemError } = useAppState();
   const [choices, setChoices] = useState<Record<string, SessionCompletionStatus>>({});
   const [saving, setSaving] = useState(false);
 
@@ -41,7 +41,7 @@ export default function ResolveSessionsModal({ sessions, onClose, onResolved }: 
     if (results.every(Boolean)) {
       onResolved();
     } else {
-      showToast("Couldn't save some of those. Please try again.");
+      reportSystemError("Couldn't save some of those. Please try again.");
     }
   }
 

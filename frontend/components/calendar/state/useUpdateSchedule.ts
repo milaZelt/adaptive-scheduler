@@ -14,7 +14,10 @@ interface UseUpdateScheduleParams {
   setFlexibleTasks: (tasks: FlexibleTask[]) => void;
   setScheduledSessions: (sessions: ScheduledSession[]) => void;
   setLastRunAt: (date: Date | null) => void;
+  /** Transient confirmation only - the success case. */
   showToast: (msg: string) => void;
+  /** Persisted in the Status area until dismissed - both failure cases. */
+  reportSystemError: (text: string) => void;
 }
 
 export interface UseUpdateScheduleResult {
@@ -32,6 +35,7 @@ export function useUpdateSchedule({
   setScheduledSessions,
   setLastRunAt,
   showToast,
+  reportSystemError,
 }: UseUpdateScheduleParams): UseUpdateScheduleResult {
   const [updatingSchedule, setUpdatingSchedule] = useState(false);
   const [resolvePrompt, setResolvePrompt] = useState<UnresolvedSessionInfo[] | null>(null);
@@ -52,7 +56,7 @@ export function useUpdateSchedule({
       response = (await res.json()) as UpdateScheduleResponse;
     } catch {
       setUpdatingSchedule(false);
-      showToast("Couldn't update your schedule. Please try again.");
+      reportSystemError("Couldn't update your schedule. Please try again.");
       return;
     }
 
@@ -63,7 +67,7 @@ export function useUpdateSchedule({
       return;
     }
     if (response.status === "error") {
-      showToast(response.message || "Couldn't update your schedule. Please try again.");
+      reportSystemError(response.message || "Couldn't update your schedule. Please try again.");
       return;
     }
 
@@ -71,7 +75,15 @@ export function useUpdateSchedule({
     setScheduledSessions(response.scheduledSessions);
     setLastRunAt(new Date(response.lastRunAt));
     showToast("Schedule updated");
-  }, [updatingSchedule, today, setFlexibleTasks, setScheduledSessions, setLastRunAt, showToast]);
+  }, [
+    updatingSchedule,
+    today,
+    setFlexibleTasks,
+    setScheduledSessions,
+    setLastRunAt,
+    showToast,
+    reportSystemError,
+  ]);
 
   const closeResolvePrompt = useCallback(() => setResolvePrompt(null), []);
 

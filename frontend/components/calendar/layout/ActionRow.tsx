@@ -26,14 +26,16 @@ export default function ActionRow() {
           onClose={() => setMenuAnchor(null)}
           items={[
             {
-              label: "Fixed Event",
+              label: "Event",
+              subtitle: "You choose when",
               onClick: () => {
                 setMenuAnchor(null);
                 openFixedEventDrawer();
               },
             },
             {
-              label: "Flexible Event",
+              label: "Task",
+              subtitle: "Nextly finds the time",
               onClick: () => {
                 setMenuAnchor(null);
                 openFlexibleEventDrawer();

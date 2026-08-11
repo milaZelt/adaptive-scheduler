@@ -76,6 +76,29 @@
   background: var(--danger);
 }
 
+.systemMessages {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+.systemMessageRow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.systemMessageText {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-sans);
+  font-size: 0.76rem;
+  color: var(--ink);
+  line-height: 1.4;
+}
+
 .taskSection {
   margin-top: 1.5rem;
 }
@@ -106,7 +129,21 @@
   flex-direction: column;
   gap: 0.15rem;
 }
+.taskTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+.taskColorDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
 .taskTitle {
+  flex: 1;
+  min-width: 0;
   font-family: var(--font-sans);
   font-size: 0.82rem;
   color: var(--ink);

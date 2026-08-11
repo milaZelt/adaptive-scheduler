@@ -7,7 +7,73 @@ import { addDays, toISODate } from "@/lib/calendar/dateUtils";
 import { PLANNING_HORIZON_DAYS } from "@/lib/calendar/constants";
 import Drawer from "./Drawer";
 import Button from "@/components/ui/Button";
+import Select, { type SelectOption } from "@/components/ui/Select";
 import fieldStyles from "./FormFields.module.css";
+
+const PRIORITY_OPTIONS: SelectOption[] = [
+  { value: "High", label: "High" },
+  { value: "Medium", label: "Medium" },
+  { value: "Low", label: "Low" },
+];
+
+const MINUTE_OPTIONS: SelectOption[] = [
+  { value: "0", label: "0 min" },
+  { value: "15", label: "15 min" },
+  { value: "30", label: "30 min" },
+  { value: "45", label: "45 min" },
+];
+
+/** decimal hours <-> separate hours/minutes form fields, snapping to the
+ *  nearest 15-min option - storage stays a single decimal number throughout
+ *  (FlexibleTask.estimateHours/sessionMin/sessionMax, DB numeric(5,2)),
+ *  this only changes how the value is entered. Snapping matters for editing
+ *  older rows saved before this UI existed, which may not land on a
+ *  15-min boundary. */
+function decimalToHM(decimal: number): { h: string; m: string } {
+  const totalMinutes = Math.round(decimal * 60);
+  const h = Math.floor(totalMinutes / 60);
+  const snappedM = Math.round((totalMinutes % 60) / 15) * 15;
+  return snappedM === 60 ? { h: String(h + 1), m: "0" } : { h: String(h), m: String(snappedM) };
+}
+
+function hmToDecimal(h: string, m: string): number {
+  return (h === "" ? 0 : Number(h)) + (m === "" ? 0 : Number(m)) / 60;
+}
+
+interface DurationFieldProps {
+  label: string;
+  hours: string;
+  minutes: string;
+  onHoursChange: (v: string) => void;
+  onMinutesChange: (v: string) => void;
+}
+
+function DurationField({ label, hours, minutes, onHoursChange, onMinutesChange }: DurationFieldProps) {
+  return (
+    <div className={fieldStyles.field}>
+      <div className={fieldStyles.fieldLabel}>
+        <span className={fieldStyles.req}>*</span>
+        {label}
+      </div>
+      <div className={fieldStyles.fieldRow}>
+        <div className={fieldStyles.field}>
+          <input
+            className={fieldStyles.fieldInput}
+            type="number"
+            min={0}
+            step={1}
+            placeholder="Hours"
+            value={hours}
+            onChange={(e) => onHoursChange(e.target.value)}
+          />
+        </div>
+        <div className={fieldStyles.field}>
+          <Select value={minutes} onChange={onMinutesChange} options={MINUTE_OPTIONS} />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 interface FlexibleEventFormProps {
   prefill?: FlexibleTask;
@@ -21,16 +87,21 @@ export default function FlexibleEventForm({ prefill, onClose }: FlexibleEventFor
 
   const [title, setTitle] = useState(prefill?.title ?? "");
   const [deadline, setDeadline] = useState(prefill?.deadline ?? "");
-  const [estimateHours, setEstimateHours] = useState(
-    prefill?.estimateHours != null ? String(prefill.estimateHours) : "",
-  );
+
+  const initialEstimate = prefill?.estimateHours != null ? decimalToHM(prefill.estimateHours) : { h: "", m: "0" };
+  const [estHours, setEstHours] = useState(initialEstimate.h);
+  const [estMinutes, setEstMinutes] = useState(initialEstimate.m);
+
   const [splitOk, setSplitOk] = useState(prefill?.splitOk ?? false);
-  const [sessionMin, setSessionMin] = useState(
-    prefill?.sessionMin != null ? String(prefill.sessionMin) : "",
-  );
-  const [sessionMax, setSessionMax] = useState(
-    prefill?.sessionMax != null ? String(prefill.sessionMax) : "",
-  );
+
+  const initialMin = prefill?.sessionMin != null ? decimalToHM(prefill.sessionMin) : { h: "", m: "0" };
+  const [minHours, setMinHours] = useState(initialMin.h);
+  const [minMinutes, setMinMinutes] = useState(initialMin.m);
+
+  const initialMax = prefill?.sessionMax != null ? decimalToHM(prefill.sessionMax) : { h: "", m: "0" };
+  const [maxHours, setMaxHours] = useState(initialMax.h);
+  const [maxMinutes, setMaxMinutes] = useState(initialMax.m);
+
   const [description, setDescription] = useState(prefill?.description ?? "");
   const [priority, setPriority] = useState<Priority | "">(prefill?.priority ?? "");
   const [categoryId, setCategoryId] = useState(prefill?.categoryId ?? categories[0]?.id ?? "");
@@ -50,13 +121,12 @@ export default function FlexibleEventForm({ prefill, onClose }: FlexibleEventFor
     parsedDeadline && !isNaN(parsedDeadline.getTime()) && toISODate(parsedDeadline) > horizonEndISO,
   );
 
-  const timeValid = estimateHours !== "" && Number(estimateHours) > 0;
-  const splitValid =
-    !splitOk ||
-    (sessionMin !== "" &&
-      sessionMax !== "" &&
-      Number(sessionMax) >= Number(sessionMin) &&
-      Number(sessionMin) > 0);
+  const estimateDecimal = hmToDecimal(estHours, estMinutes);
+  const sessionMinDecimal = hmToDecimal(minHours, minMinutes);
+  const sessionMaxDecimal = hmToDecimal(maxHours, maxMinutes);
+
+  const timeValid = estimateDecimal > 0;
+  const splitValid = !splitOk || (sessionMinDecimal > 0 && sessionMaxDecimal >= sessionMinDecimal);
   const canSave = Boolean(
     title.trim() && priority && categoryId && deadline && !isOutOfWindow && timeValid && splitValid,
   );
@@ -70,10 +140,10 @@ export default function FlexibleEventForm({ prefill, onClose }: FlexibleEventFor
       categoryId,
       priority: priority as Priority,
       deadline,
-      estimateHours: Number(estimateHours),
+      estimateHours: estimateDecimal,
       splitOk,
-      sessionMin: splitOk ? Number(sessionMin) : null,
-      sessionMax: splitOk ? Number(sessionMax) : null,
+      sessionMin: splitOk ? sessionMinDecimal : null,
+      sessionMax: splitOk ? sessionMaxDecimal : null,
       description: description.trim() || undefined,
     };
 
@@ -92,7 +162,7 @@ export default function FlexibleEventForm({ prefill, onClose }: FlexibleEventFor
 
   return (
     <Drawer
-      title={isEdit ? "Edit Flexible Task" : "New Flexible Task"}
+      title={isEdit ? "Edit Task" : "New Task"}
       onClose={onClose}
       footer={
         <Button variant="primary" disabled={!canSave || saving} onClick={handleSave}>
@@ -139,20 +209,13 @@ export default function FlexibleEventForm({ prefill, onClose }: FlexibleEventFor
         </div>
       )}
 
-      <div className={fieldStyles.field}>
-        <div className={fieldStyles.fieldLabel}>
-          <span className={fieldStyles.req}>*</span>Time Estimate (hrs)
-        </div>
-        <input
-          className={fieldStyles.fieldInput}
-          type="number"
-          min={0.25}
-          step={0.25}
-          placeholder="Hours"
-          value={estimateHours}
-          onChange={(e) => setEstimateHours(e.target.value)}
-        />
-      </div>
+      <DurationField
+        label="Time Estimate"
+        hours={estHours}
+        minutes={estMinutes}
+        onHoursChange={setEstHours}
+        onMinutesChange={setEstMinutes}
+      />
 
       <div className={fieldStyles.checkRow}>
         <input
@@ -165,34 +228,22 @@ export default function FlexibleEventForm({ prefill, onClose }: FlexibleEventFor
       </div>
 
       {splitOk && (
-        <div className={fieldStyles.fieldRow}>
-          <div className={fieldStyles.field}>
-            <div className={fieldStyles.fieldLabel}>
-              <span className={fieldStyles.req}>*</span>Min Session (hrs)
-            </div>
-            <input
-              className={fieldStyles.fieldInput}
-              type="number"
-              min={0.25}
-              step={0.25}
-              value={sessionMin}
-              onChange={(e) => setSessionMin(e.target.value)}
-            />
-          </div>
-          <div className={fieldStyles.field}>
-            <div className={fieldStyles.fieldLabel}>
-              <span className={fieldStyles.req}>*</span>Max Session (hrs)
-            </div>
-            <input
-              className={fieldStyles.fieldInput}
-              type="number"
-              min={0.25}
-              step={0.25}
-              value={sessionMax}
-              onChange={(e) => setSessionMax(e.target.value)}
-            />
-          </div>
-        </div>
+        <>
+          <DurationField
+            label="Min Session"
+            hours={minHours}
+            minutes={minMinutes}
+            onHoursChange={setMinHours}
+            onMinutesChange={setMinMinutes}
+          />
+          <DurationField
+            label="Max Session"
+            hours={maxHours}
+            minutes={maxMinutes}
+            onHoursChange={setMaxHours}
+            onMinutesChange={setMaxMinutes}
+          />
+        </>
       )}
 
       <div className={fieldStyles.field}>
@@ -209,33 +260,24 @@ export default function FlexibleEventForm({ prefill, onClose }: FlexibleEventFor
         <div className={fieldStyles.fieldLabel}>
           <span className={fieldStyles.req}>*</span>Priority
         </div>
-        <select
-          className={fieldStyles.fieldInput}
+        <Select
           value={priority}
-          onChange={(e) => setPriority(e.target.value as Priority | "")}
-        >
-          <option value="">Select priority</option>
-          <option value="High">High</option>
-          <option value="Medium">Medium</option>
-          <option value="Low">Low</option>
-        </select>
+          onChange={(v) => setPriority(v as Priority)}
+          options={PRIORITY_OPTIONS}
+          placeholder="Select priority"
+        />
       </div>
 
       <div className={fieldStyles.field}>
         <div className={fieldStyles.fieldLabel}>
           <span className={fieldStyles.req}>*</span>Calendar
         </div>
-        <select
-          className={fieldStyles.fieldInput}
+        <Select
           value={categoryId}
-          onChange={(e) => setCategoryId(e.target.value)}
-        >
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+          onChange={setCategoryId}
+          options={categories.map((c) => ({ value: c.id, label: c.name, color: c.color }))}
+          placeholder="Select calendar"
+        />
       </div>
     </Drawer>
   );

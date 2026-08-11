@@ -44,10 +44,13 @@ export default function StatusList() {
     events,
     today,
     lastRunAt,
+    getCategory,
     openFlexibleEventDrawer,
     deleteFlexibleTask,
     showConfirmDialog,
     showToast,
+    systemMessages,
+    dismissSystemMessage,
   } = useAppState();
 
   const staleness = useMemo(
@@ -71,6 +74,25 @@ export default function StatusList() {
   return (
     <div>
       <div className={`${styles.statusLabel} sans`}>Status</div>
+
+      {systemMessages.length > 0 && (
+        <div className={styles.systemMessages}>
+          {systemMessages.map((m) => (
+            <div className={styles.systemMessageRow} key={m.id}>
+              <span className={`${styles.dot} ${styles.warn}`} />
+              <span className={styles.systemMessageText}>{m.text}</span>
+              <button
+                className={styles.taskDelete}
+                aria-label="Dismiss"
+                onClick={() => dismissSystemMessage(m.id)}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className={styles.statusItem}>
         <span className={`${styles.dot} ${staleness.stale ? styles.warn : ""}`} />
         {staleness.stale
@@ -88,7 +110,13 @@ export default function StatusList() {
             {tasks.map((t) => (
               <div className={styles.taskRow} key={t.id}>
                 <button className={styles.taskMain} onClick={() => openFlexibleEventDrawer(t)}>
-                  <span className={styles.taskTitle}>{t.title}</span>
+                  <span className={styles.taskTitleRow}>
+                    <span
+                      className={styles.taskColorDot}
+                      style={{ background: getCategory(t.categoryId)?.color ?? "#ccc" }}
+                    />
+                    <span className={styles.taskTitle}>{t.title}</span>
+                  </span>
                   <span className={styles.taskMeta}>{metaLabel(t)}</span>
                 </button>
                 <button

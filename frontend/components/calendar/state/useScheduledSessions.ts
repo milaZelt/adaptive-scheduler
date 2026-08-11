@@ -33,6 +33,11 @@ export interface UseScheduledSessionsResult {
    *  without this, an already-rendered session block for the deleted task
    *  would linger on the grid until the next full reload). */
   removeScheduledSessionsByTask: (taskId: string) => void;
+  /** Cascades a flexible task recategorize — a DB trigger keeps
+   *  scheduled_sessions.category_id (denormalized at solve time) in sync
+   *  server-side; this mirrors that for local state so an already-placed
+   *  session's color/visibility updates immediately, not just after reload. */
+  updateScheduledSessionsCategoryForTask: (taskId: string, categoryId: string) => void;
 }
 
 export function useScheduledSessions(
@@ -119,6 +124,12 @@ export function useScheduledSessions(
     setScheduledSessionsState((cur) => cur.filter((s) => s.taskId !== taskId));
   }, []);
 
+  const updateScheduledSessionsCategoryForTask = useCallback((taskId: string, categoryId: string) => {
+    setScheduledSessionsState((cur) =>
+      cur.map((s) => (s.taskId === taskId ? { ...s, categoryId } : s)),
+    );
+  }, []);
+
   return {
     scheduledSessions,
     scheduledSessionsLoading,
@@ -128,5 +139,6 @@ export function useScheduledSessions(
     setScheduledSessions,
     removeScheduledSessionsByCategory,
     removeScheduledSessionsByTask,
+    updateScheduledSessionsCategoryForTask,
   };
 }
