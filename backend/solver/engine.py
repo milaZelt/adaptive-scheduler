@@ -128,8 +128,20 @@ def _solve_and_lock(
         model.Minimize(expr)
     solver.parameters.max_time_in_seconds = STAGE_TIME_LIMIT_S
     status = solver.Solve(model)
-    if status != cp_model.OPTIMAL:
-        raise RuntimeError(f"solver stage did not reach OPTIMAL (status={solver.StatusName(status)})")
+    # FEASIBLE means CP-SAT found a valid, usable solution but ran out of
+    # time proving no better one exists - real task counts are far larger
+    # than the fixture tests this time limit was tuned against, so treating
+    # "found a good schedule" the same as "found no schedule at all" would
+    # make Update Schedule fail outright on exactly the inputs it most needs
+    # to handle well. In practice CP-SAT finds strong solutions quickly and
+    # spends most of its remaining budget on the proof step, so a FEASIBLE
+    # result here is very likely already optimal or close to it - and every
+    # later stage still only ever narrows this value further, never behind
+    # it, so a merely-good stage 1 can't make a later stage do worse.
+    if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+        raise RuntimeError(f"solver stage found no solution (status={solver.StatusName(status)})")
+    if status == cp_model.FEASIBLE:
+        print(f"solver stage settled for FEASIBLE, not proven OPTIMAL, within {STAGE_TIME_LIMIT_S}s")
     value = round(solver.ObjectiveValue())
     model.Add(expr == value)
     return solver

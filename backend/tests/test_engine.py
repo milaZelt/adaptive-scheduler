@@ -4,6 +4,8 @@ Each test isolates one specific rule from the decisions record so a future
 change that breaks one piece of behavior fails precisely, not vaguely.
 """
 
+from unittest.mock import patch
+
 from solver.engine import solve
 from solver.types import BusyInterval, FlexibleTaskInput
 
@@ -406,3 +408,41 @@ def test_empty_task_list_returns_empty_result():
 
     assert result.task_results == {}
     assert result.all_sessions == []
+
+
+# ---------------------------------------------------------------------------
+# A stage that only reaches FEASIBLE (not proven OPTIMAL) within its time
+# budget must still be accepted, not treated as a failure - real task counts
+# are far larger than every fixture above, and this is what production
+# actually hit (Ticket 4 review, real user data): a stage timing out on the
+# *proof* step while still holding a perfectly good, checked-feasible
+# solution. Confirmed to actually discriminate, not just pass: with
+# STAGE_TIME_LIMIT_S patched down for this fixture, the pre-fix check
+# (status != OPTIMAL) raises on this exact scenario; the fix accepts it.
+# ---------------------------------------------------------------------------
+
+
+def test_feasible_but_unproven_optimal_stage_result_is_accepted():
+    # 10 splittable tasks across a full 14-day horizon with daily contention
+    # - enough combinatorial depth that proving optimality takes a bit of
+    # real search, even though CP-SAT finds a complete, valid solution fast.
+    tasks = [
+        task(
+            f"t{i}", priority="High", deadline_day=13, remaining_minutes=180,
+            min_session_minutes=30, max_session_minutes=90, splittable=True,
+        )
+        for i in range(10)
+    ]
+    busy_intervals = [busy(d, 12.0, 13.0) for d in range(14)]
+
+    with patch("solver.engine.STAGE_TIME_LIMIT_S", 0.3):
+        result = solve(tasks, busy_intervals=busy_intervals, horizon_days=14)
+
+    # Not asserting a specific placement (a FEASIBLE-not-OPTIMAL result is
+    # allowed to differ run-to-run within CP-SAT's search) - just that the
+    # call succeeded at all and returned a complete, structurally valid
+    # result, which is exactly what the pre-fix code refused to do.
+    assert len(result.task_results) == 10
+    for r in result.task_results.values():
+        assert r.scheduled is True
+        assert total_minutes(r.sessions) == 180
