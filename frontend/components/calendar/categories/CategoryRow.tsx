@@ -125,8 +125,8 @@ export default function CategoryRow({ category }: CategoryRowProps) {
               variant="primary"
               size="mini"
               onClick={() => {
-                const val = renameValue.trim();
-                if (val) renameCategory(category.id, val);
+                const trimmedName = renameValue.trim();
+                if (trimmedName) renameCategory(category.id, trimmedName);
                 setRenameAnchor(null);
               }}
             >

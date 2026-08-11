@@ -419,6 +419,15 @@ def test_empty_task_list_returns_empty_result():
 # solution. Confirmed to actually discriminate, not just pass: with
 # STAGE_TIME_LIMIT_S patched down for this fixture, the pre-fix check
 # (status != OPTIMAL) raises on this exact scenario; the fix accepts it.
+#
+# This is inherently a wall-clock-timing test (there's no deterministic way
+# to force CP-SAT's parallel default search to land on FEASIBLE-not-OPTIMAL
+# short of forcing single-threaded search, which changes the search enough
+# to no longer represent what production actually runs) - 0.3s originally
+# discriminated reliably in isolation, but flaked under real machine load
+# (this repo's own test/build tooling running concurrently). 3.0s held
+# reliably across repeated trials under that same load with a lot more
+# margin; still fast enough not to slow the suite down meaningfully.
 # ---------------------------------------------------------------------------
 
 
@@ -435,7 +444,7 @@ def test_feasible_but_unproven_optimal_stage_result_is_accepted():
     ]
     busy_intervals = [busy(d, 12.0, 13.0) for d in range(14)]
 
-    with patch("solver.engine.STAGE_TIME_LIMIT_S", 0.3):
+    with patch("solver.engine.STAGE_TIME_LIMIT_S", 3.0):
         result = solve(tasks, busy_intervals=busy_intervals, horizon_days=14)
 
     # Not asserting a specific placement (a FEASIBLE-not-OPTIMAL result is

@@ -13,8 +13,8 @@ export default function AboutSection() {
         <span className={styles.tag}>About</span>
         <h2 className={styles.title}>Why I built this?</h2>
         <div className={styles.body}>
-          {intro.map((paragraph) => (
-            <p key={paragraph.slice(0, 20)}>{paragraph}</p>
+          {intro.map((paragraph, i) => (
+            <p key={i}>{paragraph}</p>
           ))}
         </div>
       </div>

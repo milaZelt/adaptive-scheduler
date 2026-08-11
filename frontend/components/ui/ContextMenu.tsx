@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import React from "react";
+import { useFloatingPanel } from "./useFloatingPanel";
 import styles from "./ContextMenu.module.css";
 
 export interface ContextMenuItem {
@@ -30,54 +31,13 @@ export default function ContextMenu({
   align = "right",
   matchWidth = false,
 }: ContextMenuProps) {
-  const ref = useRef<HTMLDivElement>(null);
-
-  const left = matchWidth
-    ? anchorRect.left
-    : align === "right"
-      ? Math.max(10, anchorRect.right - 150)
-      : anchorRect.left;
-  const width = matchWidth ? anchorRect.width : undefined;
-
-  // Below the anchor by default, matching a native <select>'s usual open
-  // direction - but forms can put a field (e.g. the always-last "Calendar"
-  // select) anywhere in a scrollable drawer, including right at the bottom
-  // of the viewport, so this has to be able to flip upward like a native
-  // dropdown would. Measured post-mount via useLayoutEffect (fires before
-  // paint, so no visible flicker) since the menu's real height depends on
-  // its item count, which isn't known until it's actually rendered.
-  const [top, setTop] = useState(anchorRect.bottom + 6);
-  useLayoutEffect(() => {
-    const menuHeight = ref.current?.offsetHeight ?? 0;
-    const spaceBelow = window.innerHeight - anchorRect.bottom - 6;
-    const spaceAbove = anchorRect.top - 6;
-    setTop(
-      menuHeight > spaceBelow && spaceAbove > spaceBelow
-        ? Math.max(10, anchorRect.top - menuHeight - 6)
-        : anchorRect.bottom + 6,
-    );
-  }, [anchorRect]);
-
-  useEffect(() => {
-    function onDocClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    const t = setTimeout(() => {
-      document.addEventListener("click", onDocClick, true);
-      document.addEventListener("keydown", onKey);
-    }, 0);
-    return () => {
-      clearTimeout(t);
-      document.removeEventListener("click", onDocClick, true);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [onClose]);
+  // No explicit `width` - the menu sizes to its content (CSS min-width),
+  // unlike Popover's fixed-width forms, so the shared hook measures it
+  // post-mount for both the right-alignment math and the flip check.
+  const { ref, style } = useFloatingPanel({ anchorRect, onClose, align, matchWidth });
 
   return (
-    <div ref={ref} className={styles.menu} style={{ top, left, width }}>
+    <div ref={ref} className={styles.menu} style={style}>
       {items.map((item, i) => (
         <button
           key={`${i}-${item.label}`}

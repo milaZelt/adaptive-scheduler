@@ -5,6 +5,15 @@
   gap: 0.5rem;
   font-family: var(--font-sans);
   font-size: 0.92rem;
+  /* globals.css sets `button { font: inherit }` so buttons don't fall back
+     to the browser's UA button font - but that means this inherits body's
+     line-height: 1.6 unless overridden here. .fieldInput's <input>/<textarea>
+     elements aren't covered by that reset, so they render at the browser's
+     own (much tighter) default line-height for form controls instead. Same
+     padding, different line-height, so a Select sitting next to a plain
+     input (e.g. DurationField's Hours input + Minutes Select) rendered
+     taller and out of alignment. */
+  line-height: normal;
   color: var(--ink);
   border: none;
   border-bottom: 1px solid var(--line);

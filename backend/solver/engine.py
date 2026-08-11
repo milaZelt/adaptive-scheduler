@@ -154,43 +154,43 @@ class _TaskVars:
     scheduled: cp_model.IntVar
 
 
-def solve(
-    tasks: list[FlexibleTaskInput],
-    busy_intervals: list[BusyInterval],
-    horizon_days: int,
-) -> SolveResult:
-    if not tasks:
-        return SolveResult(task_results={}, all_sessions=[])
+def _build_task_vars(task: FlexibleTaskInput, model: cp_model.CpModel) -> _TaskVars:
+    """One task's candidate sessions plus its own `scheduled` bool - true iff
+    the candidates present sum to exactly the task's full remaining_minutes,
+    false iff none are present (all-or-nothing, enforced here)."""
+    candidates = [_Candidate(task, i, model) for i in range(_num_candidates(task))]
 
-    model = cp_model.CpModel()
-    all_candidates: list[_Candidate] = []
-    task_vars: dict[str, _TaskVars] = {}
+    scheduled = model.NewBoolVar(f"scheduled_{task.id}")
+    effective_durations = []
+    for c in candidates:
+        cap = task.max_session_minutes if task.splittable else task.remaining_minutes
+        eff = model.NewIntVar(0, cap, f"eff_{task.id}_{c.index}")
+        model.Add(eff == c.duration).OnlyEnforceIf(c.presence)
+        model.Add(eff == 0).OnlyEnforceIf(c.presence.Not())
+        effective_durations.append(eff)
 
-    for task in tasks:
-        candidates = [_Candidate(task, i, model) for i in range(_num_candidates(task))]
-        all_candidates.extend(candidates)
+    total = sum(effective_durations)
+    model.Add(total == task.remaining_minutes).OnlyEnforceIf(scheduled)
+    model.Add(total == 0).OnlyEnforceIf(scheduled.Not())
 
-        scheduled = model.NewBoolVar(f"scheduled_{task.id}")
-        effective_durations = []
-        for c in candidates:
-            cap = task.max_session_minutes if task.splittable else task.remaining_minutes
-            eff = model.NewIntVar(0, cap, f"eff_{task.id}_{c.index}")
-            model.Add(eff == c.duration).OnlyEnforceIf(c.presence)
-            model.Add(eff == 0).OnlyEnforceIf(c.presence.Not())
-            effective_durations.append(eff)
+    return _TaskVars(task=task, candidates=candidates, scheduled=scheduled)
 
-        total = sum(effective_durations)
-        model.Add(total == task.remaining_minutes).OnlyEnforceIf(scheduled)
-        model.Add(total == 0).OnlyEnforceIf(scheduled.Not())
 
-        task_vars[task.id] = _TaskVars(task=task, candidates=candidates, scheduled=scheduled)
-
-    # Flex-vs-flex: uniform minimum gap via padded shadow intervals.
+def _add_flex_vs_flex_constraint(model: cp_model.CpModel, all_candidates: list[_Candidate]) -> None:
+    """Uniform minimum gap between any two flexible sessions (including two
+    sessions of the same split task), via their padded shadow intervals."""
     if all_candidates:
         model.AddNoOverlap([c.padded_interval for c in all_candidates])
 
-    # Flex-vs-fixed/Google: padded disjunction. Fixed/Google intervals are
-    # never checked against each other - only against flexible candidates.
+
+def _add_flex_vs_fixed_constraints(
+    model: cp_model.CpModel,
+    all_candidates: list[_Candidate],
+    busy_intervals: list[BusyInterval],
+) -> None:
+    """Padded disjunction against every fixed/Google busy interval. Fixed/
+    Google intervals are never checked against each other - only against
+    flexible candidates."""
     for c in all_candidates:
         for busy in busy_intervals:
             busy_start = busy.day * MINUTES_PER_DAY + round(busy.start_hour * 60)
@@ -200,6 +200,22 @@ def solve(
             model.Add(c.abs_end <= busy_start - PADDING_MIN).OnlyEnforceIf([c.presence, before])
             model.Add(c.abs_start >= busy_end + PADDING_MIN).OnlyEnforceIf([c.presence, after])
             model.AddBoolOr([before, after]).OnlyEnforceIf(c.presence)
+
+
+def solve(
+    tasks: list[FlexibleTaskInput],
+    busy_intervals: list[BusyInterval],
+    horizon_days: int,
+) -> SolveResult:
+    if not tasks:
+        return SolveResult(task_results={}, all_sessions=[])
+
+    model = cp_model.CpModel()
+    task_vars: dict[str, _TaskVars] = {task.id: _build_task_vars(task, model) for task in tasks}
+    all_candidates = [c for tv in task_vars.values() for c in tv.candidates]
+
+    _add_flex_vs_flex_constraint(model, all_candidates)
+    _add_flex_vs_fixed_constraints(model, all_candidates, busy_intervals)
 
     solver = cp_model.CpSolver()
 

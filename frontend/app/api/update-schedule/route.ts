@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
+import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { PLANNING_HORIZON_DAYS } from "@/lib/calendar/constants";
-import { dayOffsetInHorizon, getPlanningHorizon } from "@/lib/calendar/horizon";
+import { dayOffsetInHorizon, getPlanningHorizon, type PlanningHorizon } from "@/lib/calendar/horizon";
 import { eventOccursOnDate } from "@/lib/calendar/recurrence";
 import {
   eventFromRow,
@@ -60,7 +61,13 @@ function errorResponse(message: string, status: number) {
   return NextResponse.json({ status: "error", message } satisfies UpdateScheduleResponse, { status });
 }
 
-export async function POST(request: Request) {
+// Each step below either returns the data the next step needs, or a
+// ready-to-return NextResponse (error or, for the pre-solve gate, "blocked")
+// - the caller just checks `instanceof NextResponse` and returns it as-is,
+// so POST itself reads as a single top-to-bottom sequence of named steps
+// rather than one long procedural function.
+
+async function parseToday(request: Request): Promise<NextResponse | Date> {
   let body: unknown;
   try {
     body = await request.json();
@@ -80,51 +87,62 @@ export async function POST(request: Request) {
   if (isNaN(todayDate.getTime())) {
     return errorResponse("Missing or malformed 'today'.", 400);
   }
+  return todayDate;
+}
 
-  const supabase = await createClient();
+async function getAuthenticatedUser(supabase: SupabaseClient): Promise<NextResponse | User> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) {
-    return errorResponse("Not authenticated.", 401);
-  }
+  return user ?? errorResponse("Not authenticated.", 401);
+}
 
-  const horizon = getPlanningHorizon(todayDate);
-
-  // --- Pre-solve gate: unresolved past sessions block everything else. ----
-  const { data: unresolvedRows, error: unresolvedError } = await supabase
+/** Non-null return means "stop and return this" - either a DB error, or a
+ *  successful "blocked" response listing what needs resolving first. Null
+ *  means nothing unresolved was found and the caller should proceed. */
+async function checkForUnresolvedPastSessions(
+  supabase: SupabaseClient,
+  userId: string,
+  horizon: PlanningHorizon,
+): Promise<NextResponse | null> {
+  const { data: unresolvedRows, error } = await supabase
     .from("scheduled_sessions")
     .select("id, date, start_time, end_time, flexible_tasks(title)")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .lt("date", horizon.startISO)
     .eq("completion_status", "unresolved");
 
-  if (unresolvedError) {
+  if (error) {
     return errorResponse("Couldn't check for unresolved past sessions.", 500);
   }
-
-  if (unresolvedRows && unresolvedRows.length > 0) {
-    const unresolvedSessions = unresolvedRows.map((row) => {
-      const task = row.flexible_tasks as unknown as { title: string } | { title: string }[] | null;
-      const taskTitle = Array.isArray(task) ? (task[0]?.title ?? "Untitled task") : (task?.title ?? "Untitled task");
-      return {
-        id: row.id as string,
-        taskTitle,
-        date: row.date as string,
-        start: Number(row.start_time),
-        end: Number(row.end_time),
-      };
-    });
-    return NextResponse.json({ status: "blocked", unresolvedSessions } satisfies UpdateScheduleResponse);
+  if (!unresolvedRows || unresolvedRows.length === 0) {
+    return null;
   }
 
-  // --- Gather fixed events and expand recurrence per horizon day. ---------
-  const { data: eventRows, error: eventsError } = await supabase
-    .from("events")
-    .select("*")
-    .eq("user_id", user.id);
+  const unresolvedSessions = unresolvedRows.map((row) => {
+    const task = row.flexible_tasks as unknown as { title: string } | { title: string }[] | null;
+    const taskTitle = Array.isArray(task) ? (task[0]?.title ?? "Untitled task") : (task?.title ?? "Untitled task");
+    return {
+      id: row.id as string,
+      taskTitle,
+      date: row.date as string,
+      start: Number(row.start_time),
+      end: Number(row.end_time),
+    };
+  });
+  return NextResponse.json({ status: "blocked", unresolvedSessions } satisfies UpdateScheduleResponse);
+}
 
-  if (eventsError) {
+/** Fixed events, expanded per horizon day into the flat busy-interval shape
+ *  the solver expects. All-day events block the whole day, not just the
+ *  solver's own 8AM-11PM window - "all day" means all day. */
+async function gatherBusyIntervals(
+  supabase: SupabaseClient,
+  userId: string,
+  horizon: PlanningHorizon,
+): Promise<NextResponse | SolverBusyInterval[]> {
+  const { data: eventRows, error } = await supabase.from("events").select("*").eq("user_id", userId);
+  if (error) {
     return errorResponse("Couldn't load your fixed events.", 500);
   }
 
@@ -135,21 +153,36 @@ export async function POST(request: Request) {
     for (const event of events) {
       if (!eventOccursOnDate(event, day)) continue;
       if (event.allDay) {
-        // Blocks the entire day from flexible scheduling, not just the
-        // solver's own 8AM-11PM window - "all day" means all day.
         busyIntervals.push({ day: dayOffset, start_hour: 0, end_hour: 24 });
       } else if (event.start !== null && event.end !== null) {
         busyIntervals.push({ day: dayOffset, start_hour: event.start, end_hour: event.end });
       }
     }
   }
+  return busyIntervals;
+}
 
-  // --- Gather flexible tasks, resolve overdue / already-covered / eligible. ---
+interface EligibleTasks {
+  solverTasks: SolverTaskIn[];
+  allTasks: FlexibleTask[];
+  /** task_id -> the status this run resolves it to, applied after the solve. */
+  resolvedStatuses: Map<string, SchedulingStatus>;
+}
+
+/** Every flexible task, sorted into "resolved without the solver" (overdue,
+ *  out-of-horizon, or already fully covered by completed sessions) versus
+ *  "send to the solver" - remaining_minutes for the latter already deducts
+ *  every completed session for that task, regardless of date (see the
+ *  comment at its use below for why "regardless of date" matters). */
+async function gatherEligibleTasks(
+  supabase: SupabaseClient,
+  userId: string,
+  horizon: PlanningHorizon,
+): Promise<NextResponse | EligibleTasks> {
   const { data: taskRows, error: tasksError } = await supabase
     .from("flexible_tasks")
     .select("*")
-    .eq("user_id", user.id);
-
+    .eq("user_id", userId);
   if (tasksError) {
     return errorResponse("Couldn't load your flexible tasks.", 500);
   }
@@ -157,8 +190,7 @@ export async function POST(request: Request) {
   const { data: sessionRows, error: sessionsError } = await supabase
     .from("scheduled_sessions")
     .select("*")
-    .eq("user_id", user.id);
-
+    .eq("user_id", userId);
   if (sessionsError) {
     return errorResponse("Couldn't load your scheduled sessions.", 500);
   }
@@ -167,7 +199,6 @@ export async function POST(request: Request) {
   const allSessions = ((sessionRows ?? []) as ScheduledSessionRow[]).map(scheduledSessionFromRow);
 
   const solverTasks: SolverTaskIn[] = [];
-  // task_id -> the status this run resolves it to, applied after the solve.
   const resolvedStatuses = new Map<string, SchedulingStatus>();
 
   for (const task of allTasks) {
@@ -220,89 +251,98 @@ export async function POST(request: Request) {
     });
   }
 
-  // --- Call the solver (fully stateless - see backend/api). ---------------
-  let solverResult: SolverResponse;
+  return { solverTasks, allTasks, resolvedStatuses };
+}
+
+/** Fully stateless (see backend/api) - an empty task list never needs to
+ *  reach the solver at all. */
+async function callSolver(
+  solverTasks: SolverTaskIn[],
+  busyIntervals: SolverBusyInterval[],
+): Promise<NextResponse | SolverResponse> {
   if (solverTasks.length === 0) {
-    solverResult = { task_results: {}, all_sessions: [] };
-  } else {
-    const solverUrl = process.env.SOLVER_URL;
-    const sharedSecret = process.env.SOLVER_SHARED_SECRET;
-    if (!solverUrl || !sharedSecret) {
-      return errorResponse("Solver service is not configured.", 500);
-    }
-
-    let solverRes: Response;
-    try {
-      solverRes = await fetch(`${solverUrl}/solve`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Nextly-Shared-Secret": sharedSecret },
-        body: JSON.stringify({
-          horizon_days: PLANNING_HORIZON_DAYS,
-          busy_intervals: busyIntervals,
-          tasks: solverTasks,
-        }),
-      });
-    } catch {
-      return errorResponse("Couldn't reach the scheduling service.", 502);
-    }
-
-    if (!solverRes.ok) {
-      // FastAPI's own HTTPException path (e.g. "solver failed to converge")
-      // never throws, so there's no traceback in the backend's logs for
-      // this - the only place the actual reason exists is the response body
-      // itself, which nothing was reading. Surfaced both server-side (in
-      // case it's noisy/technical) and to the client (this is a solo-user
-      // tool, not multi-tenant - there's no one else to hide it from).
-      const bodyText = await solverRes.text().catch(() => "");
-      let detail = bodyText;
-      try {
-        const parsed = JSON.parse(bodyText);
-        if (typeof parsed?.detail === "string") detail = parsed.detail;
-      } catch {
-        // Not JSON - fall back to the raw text as-is.
-      }
-      console.error(`Solver returned ${solverRes.status}: ${detail}`);
-      return errorResponse(
-        `The scheduling service couldn't process this request: ${detail || "unknown error"}`,
-        502,
-      );
-    }
-
-    try {
-      solverResult = (await solverRes.json()) as SolverResponse;
-    } catch {
-      return errorResponse("The scheduling service returned an invalid response.", 502);
-    }
+    return { task_results: {}, all_sessions: [] };
   }
 
-  // --- Validate the solver's response as untrusted input. ------------------
-  const sentTaskIds = new Set(solverTasks.map((t) => t.id));
+  const solverUrl = process.env.SOLVER_URL;
+  const sharedSecret = process.env.SOLVER_SHARED_SECRET;
+  if (!solverUrl || !sharedSecret) {
+    return errorResponse("Solver service is not configured.", 500);
+  }
+
+  let solverRes: Response;
+  try {
+    solverRes = await fetch(`${solverUrl}/solve`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Nextly-Shared-Secret": sharedSecret },
+      body: JSON.stringify({
+        horizon_days: PLANNING_HORIZON_DAYS,
+        busy_intervals: busyIntervals,
+        tasks: solverTasks,
+      }),
+    });
+  } catch {
+    return errorResponse("Couldn't reach the scheduling service.", 502);
+  }
+
+  if (!solverRes.ok) {
+    // FastAPI's own HTTPException path (e.g. "solver failed to converge")
+    // never throws, so there's no traceback in the backend's logs for
+    // this - the only place the actual reason exists is the response body
+    // itself, which nothing was reading. Surfaced both server-side (in
+    // case it's noisy/technical) and to the client (this is a solo-user
+    // tool, not multi-tenant - there's no one else to hide it from).
+    const bodyText = await solverRes.text().catch(() => "");
+    let detail = bodyText;
+    try {
+      const parsed = JSON.parse(bodyText);
+      if (typeof parsed?.detail === "string") detail = parsed.detail;
+    } catch {
+      // Not JSON - fall back to the raw text as-is.
+    }
+    console.error(`Solver returned ${solverRes.status}: ${detail}`);
+    return errorResponse(
+      `The scheduling service couldn't process this request: ${detail || "unknown error"}`,
+      502,
+    );
+  }
+
+  try {
+    return (await solverRes.json()) as SolverResponse;
+  } catch {
+    return errorResponse("The scheduling service returned an invalid response.", 502);
+  }
+}
+
+interface SessionToInsert {
+  task_id: string;
+  category_id: string;
+  date: string;
+  start_time: number;
+  end_time: number;
+  placement_reason: PlacementReason;
+}
+
+/** Derived entirely from the already-validated `all_sessions` (grouped by
+ *  task), not from task_results[x].sessions - validating one representation
+ *  of the response and persisting from a different one would defeat the
+ *  point of treating the response as untrusted. Also fills in the final
+ *  scheduled/couldn't-fit status for every task the solver actually saw. */
+function buildSessionsToInsert(
+  solverResult: SolverResponse,
+  allTasks: FlexibleTask[],
+  horizon: PlanningHorizon,
+  resolvedStatuses: Map<string, SchedulingStatus>,
+): SessionToInsert[] {
   const taskById = new Map(allTasks.map((t) => [t.id, t]));
 
-  const validationError = validateSolverResponse(solverResult, sentTaskIds, busyIntervals);
-  if (validationError) {
-    return errorResponse(`Scheduling service returned an unexpected result: ${validationError}`, 502);
-  }
-
-  // --- Build the sessions to persist. -------------------------------------
-  // Derived entirely from the already-validated `all_sessions` (grouped by
-  // task), not from task_results[x].sessions - validating one
-  // representation of the response and persisting from a different one
-  // would defeat the point of treating the response as untrusted.
   const sessionsByTask = new Map<string, SolverSessionOut[]>();
   for (const s of solverResult.all_sessions) {
     if (!sessionsByTask.has(s.task_id)) sessionsByTask.set(s.task_id, []);
     sessionsByTask.get(s.task_id)!.push(s);
   }
 
-  const sessionsToInsert: Array<{
-    task_id: string;
-    category_id: string;
-    date: string;
-    start_time: number;
-    end_time: number;
-    placement_reason: PlacementReason;
-  }> = [];
+  const sessionsToInsert: SessionToInsert[] = [];
 
   for (const [taskId, result] of Object.entries(solverResult.task_results)) {
     const task = taskById.get(taskId);
@@ -330,48 +370,104 @@ export async function POST(request: Request) {
     });
   }
 
+  return sessionsToInsert;
+}
+
+/** The transactional delete-then-insert-then-status-update - a single RPC
+ *  call so it's atomic, since the JS Supabase client has no multi-statement
+ *  transaction support of its own. */
+async function persistScheduleUpdate(
+  supabase: SupabaseClient,
+  userId: string,
+  horizon: PlanningHorizon,
+  sessionsToInsert: SessionToInsert[],
+  resolvedStatuses: Map<string, SchedulingStatus>,
+): Promise<NextResponse | null> {
   const taskStatuses = Array.from(resolvedStatuses.entries()).map(([task_id, status]) => ({
     task_id,
     status,
   }));
 
-  const { error: applyError } = await supabase.rpc("apply_schedule_update", {
-    p_user_id: user.id,
+  const { error } = await supabase.rpc("apply_schedule_update", {
+    p_user_id: userId,
     p_start_date: horizon.startISO,
     p_end_date: horizon.endISO,
     p_sessions: sessionsToInsert,
     p_task_statuses: taskStatuses,
   });
 
-  if (applyError) {
-    return errorResponse("Couldn't save the new schedule. Please try again.", 500);
-  }
+  return error ? errorResponse("Couldn't save the new schedule. Please try again.", 500) : null;
+}
 
-  // --- Re-fetch and return the fresh state for the client to adopt. -------
+interface FreshState {
+  flexibleTasks: FlexibleTask[];
+  scheduledSessions: ScheduledSession[];
+  lastRunAt: string;
+}
+
+async function fetchFreshState(supabase: SupabaseClient, userId: string): Promise<NextResponse | FreshState> {
   const [{ data: freshTaskRows }, { data: freshSessionRows }, { data: scheduleRunRow }] = await Promise.all([
-    supabase.from("flexible_tasks").select("*").eq("user_id", user.id).order("created_at", { ascending: true }),
-    supabase.from("scheduled_sessions").select("*").eq("user_id", user.id),
-    supabase.from("schedule_runs").select("updated_at").eq("user_id", user.id).maybeSingle(),
+    supabase.from("flexible_tasks").select("*").eq("user_id", userId).order("created_at", { ascending: true }),
+    supabase.from("scheduled_sessions").select("*").eq("user_id", userId),
+    supabase.from("schedule_runs").select("updated_at").eq("user_id", userId).maybeSingle(),
   ]);
 
   if (!scheduleRunRow) {
     // apply_schedule_update always upserts schedule_runs in the same
-    // transaction as the writes above, which already succeeded (checked via
-    // applyError) - a missing row here means something is genuinely wrong,
-    // not a case to paper over with a fabricated timestamp.
+    // transaction as the writes above, which already succeeded - a missing
+    // row here means something is genuinely wrong, not a case to paper over
+    // with a fabricated timestamp.
     return errorResponse("Schedule saved, but couldn't confirm the run time. Please refresh.", 500);
   }
 
-  const freshTasks: FlexibleTask[] = ((freshTaskRows ?? []) as FlexibleTaskRow[]).map(flexibleTaskFromRow);
-  const freshSessions: ScheduledSession[] = ((freshSessionRows ?? []) as ScheduledSessionRow[]).map(
-    scheduledSessionFromRow,
-  );
+  return {
+    flexibleTasks: ((freshTaskRows ?? []) as FlexibleTaskRow[]).map(flexibleTaskFromRow),
+    scheduledSessions: ((freshSessionRows ?? []) as ScheduledSessionRow[]).map(scheduledSessionFromRow),
+    lastRunAt: scheduleRunRow.updated_at,
+  };
+}
+
+export async function POST(request: Request) {
+  const todayDate = await parseToday(request);
+  if (todayDate instanceof NextResponse) return todayDate;
+
+  const supabase = await createClient();
+  const user = await getAuthenticatedUser(supabase);
+  if (user instanceof NextResponse) return user;
+
+  const horizon = getPlanningHorizon(todayDate);
+
+  const blockedOrError = await checkForUnresolvedPastSessions(supabase, user.id, horizon);
+  if (blockedOrError) return blockedOrError;
+
+  const busyIntervals = await gatherBusyIntervals(supabase, user.id, horizon);
+  if (busyIntervals instanceof NextResponse) return busyIntervals;
+
+  const eligible = await gatherEligibleTasks(supabase, user.id, horizon);
+  if (eligible instanceof NextResponse) return eligible;
+  const { solverTasks, allTasks, resolvedStatuses } = eligible;
+
+  const solverResult = await callSolver(solverTasks, busyIntervals);
+  if (solverResult instanceof NextResponse) return solverResult;
+
+  // Validate the solver's response as untrusted input before acting on it.
+  const sentTaskIds = new Set(solverTasks.map((t) => t.id));
+  const validationError = validateSolverResponse(solverResult, sentTaskIds, busyIntervals);
+  if (validationError) {
+    return errorResponse(`Scheduling service returned an unexpected result: ${validationError}`, 502);
+  }
+
+  const sessionsToInsert = buildSessionsToInsert(solverResult, allTasks, horizon, resolvedStatuses);
+
+  const persistError = await persistScheduleUpdate(supabase, user.id, horizon, sessionsToInsert, resolvedStatuses);
+  if (persistError) return persistError;
+
+  const freshState = await fetchFreshState(supabase, user.id);
+  if (freshState instanceof NextResponse) return freshState;
 
   return NextResponse.json({
     status: "ok",
-    flexibleTasks: freshTasks,
-    scheduledSessions: freshSessions,
-    lastRunAt: scheduleRunRow.updated_at,
+    ...freshState,
   } satisfies UpdateScheduleResponse);
 }
 
