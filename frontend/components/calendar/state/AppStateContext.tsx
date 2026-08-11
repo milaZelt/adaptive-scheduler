@@ -1,12 +1,19 @@
 "use client";
 
 import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
-import type { CalendarEvent, FlexibleTask, UnresolvedSessionInfo, ViewType } from "@/lib/calendar/types";
+import type {
+  CalendarEvent,
+  FlexibleTask,
+  ScheduledSession,
+  UnresolvedSessionInfo,
+  ViewType,
+} from "@/lib/calendar/types";
 import { addDays, addMonths } from "@/lib/calendar/dateUtils";
 import { useCategories, type UseCategoriesResult } from "./useCategories";
 import { useEvents, type UseEventsResult } from "./useEvents";
 import { useFlexibleTasks, type UseFlexibleTasksResult } from "./useFlexibleTasks";
 import { useScheduledSessions, type UseScheduledSessionsResult } from "./useScheduledSessions";
+import { useScheduleRuns, type UseScheduleRunsResult } from "./useScheduleRuns";
 import { useUpdateSchedule } from "./useUpdateSchedule";
 import { useNote, type UseNoteResult } from "./useNote";
 
@@ -15,6 +22,7 @@ interface AppState
     UseEventsResult,
     UseFlexibleTasksResult,
     UseScheduledSessionsResult,
+    UseScheduleRunsResult,
     UseNoteResult {
   today: Date;
   updatingSchedule: boolean;
@@ -36,6 +44,10 @@ interface AppState
   detailEvent: CalendarEvent | null;
   openEventDetail: (event: CalendarEvent) => void;
   closeEventDetail: () => void;
+
+  detailSession: ScheduledSession | null;
+  openSessionDetail: (session: ScheduledSession) => void;
+  closeSessionDetail: () => void;
 
   confirmDialog: ConfirmDialogState | null;
   showConfirmDialog: (state: Omit<ConfirmDialogState, "id">) => void;
@@ -77,6 +89,7 @@ export function AppStateProvider({
   const eventsApi = useEvents(userId, showToast);
   const flexibleTasksApi = useFlexibleTasks(userId, showToast);
   const scheduledSessionsApi = useScheduledSessions(userId, showToast);
+  const scheduleRunsApi = useScheduleRuns(userId);
   const noteApi = useNote(userId);
 
   const [today] = useState(() => new Date());
@@ -87,11 +100,13 @@ export function AppStateProvider({
     today,
     setFlexibleTasks: flexibleTasksApi.setFlexibleTasks,
     setScheduledSessions: scheduledSessionsApi.setScheduledSessions,
+    setLastRunAt: scheduleRunsApi.setLastRunAt,
     showToast,
   });
 
   const [drawer, setDrawer] = useState<DrawerState | null>(null);
   const [detailEvent, setDetailEvent] = useState<CalendarEvent | null>(null);
+  const [detailSession, setDetailSession] = useState<ScheduledSession | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState | null>(null);
 
   const setView = useCallback((v: ViewType) => setCurrentView(v), []);
@@ -125,6 +140,12 @@ export function AppStateProvider({
 
   const closeEventDetail = useCallback(() => setDetailEvent(null), []);
 
+  const openSessionDetail = useCallback((session: ScheduledSession) => {
+    setDetailSession(session);
+  }, []);
+
+  const closeSessionDetail = useCallback(() => setDetailSession(null), []);
+
   const showConfirmDialog = useCallback((state: Omit<ConfirmDialogState, "id">) => {
     setConfirmDialog(state);
   }, []);
@@ -145,12 +166,26 @@ export function AppStateProvider({
     [categoriesApi, eventsApi, flexibleTasksApi, scheduledSessionsApi],
   );
 
+  // Same reasoning as deleteCategoryCascade: deleting a flexible task must
+  // also drop its own already-placed sessions from local state, or an
+  // orphaned session block lingers on the grid until the next reload.
+  const deleteFlexibleTaskCascade = useCallback(
+    async (id: string): Promise<boolean> => {
+      const success = await flexibleTasksApi.deleteFlexibleTask(id);
+      if (success) scheduledSessionsApi.removeScheduledSessionsByTask(id);
+      return success;
+    },
+    [flexibleTasksApi, scheduledSessionsApi],
+  );
+
   const value: AppState = {
     ...categoriesApi,
     deleteCategory: deleteCategoryCascade,
     ...eventsApi,
     ...flexibleTasksApi,
+    deleteFlexibleTask: deleteFlexibleTaskCascade,
     ...scheduledSessionsApi,
+    ...scheduleRunsApi,
     ...noteApi,
     today,
     updatingSchedule,
@@ -169,6 +204,9 @@ export function AppStateProvider({
     detailEvent,
     openEventDetail,
     closeEventDetail,
+    detailSession,
+    openSessionDetail,
+    closeSessionDetail,
     confirmDialog,
     showConfirmDialog,
     closeConfirmDialog,

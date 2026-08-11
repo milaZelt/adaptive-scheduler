@@ -14,7 +14,9 @@ export interface UseFlexibleTasksResult {
   flexibleTasksLoading: boolean;
   flexibleTasksError: string | null;
   getFlexibleTaskById: (id: string) => FlexibleTask | undefined;
-  createFlexibleTask: (input: Omit<FlexibleTask, "id" | "schedulingStatus">) => Promise<FlexibleTask | null>;
+  createFlexibleTask: (
+    input: Omit<FlexibleTask, "id" | "schedulingStatus" | "createdAt" | "updatedAt">,
+  ) => Promise<FlexibleTask | null>;
   updateFlexibleTask: (id: string, patch: Partial<FlexibleTask>) => Promise<boolean>;
   deleteFlexibleTask: (id: string) => Promise<boolean>;
   /** Cascades a category delete — removes every task tied to that category
@@ -72,7 +74,9 @@ export function useFlexibleTasks(
   );
 
   const createFlexibleTask = useCallback(
-    async (input: Omit<FlexibleTask, "id" | "schedulingStatus">): Promise<FlexibleTask | null> => {
+    async (
+      input: Omit<FlexibleTask, "id" | "schedulingStatus" | "createdAt" | "updatedAt">,
+    ): Promise<FlexibleTask | null> => {
       const row = flexibleTaskToRowPatch(input);
       const { data, error } = await supabase
         .from("flexible_tasks")

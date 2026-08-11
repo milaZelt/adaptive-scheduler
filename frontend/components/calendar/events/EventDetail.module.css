@@ -44,3 +44,7 @@
   justify-content: space-between;
   gap: 0.75rem;
 }
+.toggleGroup {
+  display: flex;
+  gap: 0.5rem;
+}

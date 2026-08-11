@@ -97,6 +97,8 @@ export interface FlexibleTaskRow {
   session_max: number | string | null;
   description: string | null;
   scheduling_status: SchedulingStatus;
+  created_at: string;
+  updated_at: string;
 }
 
 export function flexibleTaskFromRow(row: FlexibleTaskRow): FlexibleTask {
@@ -112,6 +114,8 @@ export function flexibleTaskFromRow(row: FlexibleTaskRow): FlexibleTask {
     sessionMax: toNumberOrNull(row.session_max),
     description: row.description ?? undefined,
     schedulingStatus: row.scheduling_status,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 }
 
@@ -141,6 +145,7 @@ export interface ScheduledSessionRow {
   end_time: number | string;
   placement_reason: PlacementReason | null;
   completion_status: SessionCompletionStatus;
+  updated_at: string;
 }
 
 export function scheduledSessionFromRow(row: ScheduledSessionRow): ScheduledSession {
@@ -153,5 +158,6 @@ export function scheduledSessionFromRow(row: ScheduledSessionRow): ScheduledSess
     end: Number(row.end_time),
     placementReason: row.placement_reason,
     completionStatus: row.completion_status,
+    updatedAt: row.updated_at,
   };
 }

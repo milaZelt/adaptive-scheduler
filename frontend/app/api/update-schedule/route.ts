@@ -247,7 +247,25 @@ export async function POST(request: Request) {
     }
 
     if (!solverRes.ok) {
-      return errorResponse("The scheduling service couldn't process this request.", 502);
+      // FastAPI's own HTTPException path (e.g. "solver failed to converge")
+      // never throws, so there's no traceback in the backend's logs for
+      // this - the only place the actual reason exists is the response body
+      // itself, which nothing was reading. Surfaced both server-side (in
+      // case it's noisy/technical) and to the client (this is a solo-user
+      // tool, not multi-tenant - there's no one else to hide it from).
+      const bodyText = await solverRes.text().catch(() => "");
+      let detail = bodyText;
+      try {
+        const parsed = JSON.parse(bodyText);
+        if (typeof parsed?.detail === "string") detail = parsed.detail;
+      } catch {
+        // Not JSON - fall back to the raw text as-is.
+      }
+      console.error(`Solver returned ${solverRes.status}: ${detail}`);
+      return errorResponse(
+        `The scheduling service couldn't process this request: ${detail || "unknown error"}`,
+        502,
+      );
     }
 
     try {
@@ -330,10 +348,19 @@ export async function POST(request: Request) {
   }
 
   // --- Re-fetch and return the fresh state for the client to adopt. -------
-  const [{ data: freshTaskRows }, { data: freshSessionRows }] = await Promise.all([
+  const [{ data: freshTaskRows }, { data: freshSessionRows }, { data: scheduleRunRow }] = await Promise.all([
     supabase.from("flexible_tasks").select("*").eq("user_id", user.id).order("created_at", { ascending: true }),
     supabase.from("scheduled_sessions").select("*").eq("user_id", user.id),
+    supabase.from("schedule_runs").select("updated_at").eq("user_id", user.id).maybeSingle(),
   ]);
+
+  if (!scheduleRunRow) {
+    // apply_schedule_update always upserts schedule_runs in the same
+    // transaction as the writes above, which already succeeded (checked via
+    // applyError) - a missing row here means something is genuinely wrong,
+    // not a case to paper over with a fabricated timestamp.
+    return errorResponse("Schedule saved, but couldn't confirm the run time. Please refresh.", 500);
+  }
 
   const freshTasks: FlexibleTask[] = ((freshTaskRows ?? []) as FlexibleTaskRow[]).map(flexibleTaskFromRow);
   const freshSessions: ScheduledSession[] = ((freshSessionRows ?? []) as ScheduledSessionRow[]).map(
@@ -344,6 +371,7 @@ export async function POST(request: Request) {
     status: "ok",
     flexibleTasks: freshTasks,
     scheduledSessions: freshSessions,
+    lastRunAt: scheduleRunRow.updated_at,
   } satisfies UpdateScheduleResponse);
 }
 

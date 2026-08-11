@@ -65,7 +65,7 @@ export default function FlexibleEventForm({ prefill, onClose }: FlexibleEventFor
     if (!canSave || saving) return;
     setSaving(true);
 
-    const payload: Omit<FlexibleTask, "id" | "schedulingStatus"> = {
+    const payload: Omit<FlexibleTask, "id" | "schedulingStatus" | "createdAt" | "updatedAt"> = {
       title: title.trim(),
       categoryId,
       priority: priority as Priority,

@@ -1,28 +1,108 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
+import type { FlexibleTask, SchedulingStatus } from "@/lib/calendar/types";
+import { useAppState } from "../state/AppStateContext";
+import { computeStaleness } from "@/lib/calendar/staleness";
 import styles from "./RightPanel.module.css";
 
-interface StatusMessage {
-  text: string;
-  warn?: boolean;
+function estimateLabel(t: FlexibleTask): string {
+  return `${t.estimateHours}h`;
 }
 
-const DEMO_STATUS: StatusMessage[] = [
-  { text: "All tasks placed. No conflicts detected." },
-  { text: "“Gym” couldn’t fit today. Try Regenerate.", warn: true },
+function deadlineLabel(iso: string): string {
+  const d = new Date(iso + "T00:00:00");
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+/** Each state implies a different next action (decisions record) - couldn't
+ *  fit / overdue get a reason line explaining what to do about it instead of
+ *  the generic priority/deadline/estimate line the other two states use. */
+function metaLabel(t: FlexibleTask): string {
+  switch (t.schedulingStatus) {
+    case "couldnt_fit":
+      return `Couldn't fit before ${deadlineLabel(t.deadline)}`;
+    case "overdue":
+      return `Deadline passed — ${deadlineLabel(t.deadline)}`;
+    default:
+      return `${t.priority} · due ${deadlineLabel(t.deadline)} · ${estimateLabel(t)}`;
+  }
+}
+
+const SECTIONS: { status: SchedulingStatus; label: string }[] = [
+  { status: "not_yet_scheduled", label: "Not yet scheduled" },
+  { status: "couldnt_fit", label: "Couldn't fit" },
+  { status: "overdue", label: "Overdue" },
+  { status: "scheduled", label: "Scheduled" },
 ];
 
 export default function StatusList() {
+  const {
+    flexibleTasks,
+    scheduledSessions,
+    events,
+    today,
+    lastRunAt,
+    openFlexibleEventDrawer,
+    deleteFlexibleTask,
+    showConfirmDialog,
+    showToast,
+  } = useAppState();
+
+  const staleness = useMemo(
+    () => computeStaleness({ today, lastRunAt, flexibleTasks, scheduledSessions, events }),
+    [today, lastRunAt, flexibleTasks, scheduledSessions, events],
+  );
+
+  function handleDelete(task: FlexibleTask) {
+    showConfirmDialog({
+      title: `Delete "${task.title}"?`,
+      message: "This flexible task will be removed. This can't be undone.",
+      confirmLabel: "Delete",
+      danger: true,
+      onConfirm: async () => {
+        const success = await deleteFlexibleTask(task.id);
+        if (success) showToast("Task deleted");
+      },
+    });
+  }
+
   return (
     <div>
       <div className={`${styles.statusLabel} sans`}>Status</div>
-      {DEMO_STATUS.map((s) => (
-        <div className={styles.statusItem} key={s.text}>
-          <span className={`${styles.dot} ${s.warn ? styles.warn : ""}`} />
-          {s.text}
-        </div>
-      ))}
+      <div className={styles.statusItem}>
+        <span className={`${styles.dot} ${staleness.stale ? styles.warn : ""}`} />
+        {staleness.stale
+          ? `Schedule needs updating — ${staleness.reasons.join(", ")}`
+          : "Schedule up to date"}
+      </div>
+
+      {SECTIONS.map(({ status, label }) => {
+        const tasks = flexibleTasks.filter((t) => t.schedulingStatus === status);
+        if (tasks.length === 0) return null;
+
+        return (
+          <div key={status} className={styles.taskSection}>
+            <div className={`${styles.taskSectionLabel} sans`}>{label}</div>
+            {tasks.map((t) => (
+              <div className={styles.taskRow} key={t.id}>
+                <button className={styles.taskMain} onClick={() => openFlexibleEventDrawer(t)}>
+                  <span className={styles.taskTitle}>{t.title}</span>
+                  <span className={styles.taskMeta}>{metaLabel(t)}</span>
+                </button>
+                <button
+                  className={styles.taskDelete}
+                  aria-label={`Delete ${t.title}`}
+                  onClick={() => handleDelete(t)}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        );
+      })}
     </div>
   );
 }

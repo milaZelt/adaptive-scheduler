@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { ScheduledSession } from "@/lib/calendar/types";
+import type { Category, ScheduledSession } from "@/lib/calendar/types";
+import { toISODate } from "@/lib/calendar/dateUtils";
 import {
   scheduledSessionFromRow,
   type ScheduledSessionRow,
@@ -12,6 +13,10 @@ export interface UseScheduledSessionsResult {
   scheduledSessions: ScheduledSession[];
   scheduledSessionsLoading: boolean;
   scheduledSessionsError: string | null;
+  /** Sessions are already concrete single-date rows (no recurrence to
+   *  expand, unlike getEventsForDate) - just a date match plus the same
+   *  category-visibility filter events use. */
+  getSessionsForDate: (date: Date, categories: Category[]) => ScheduledSession[];
   /** The only mutation a scheduled session supports directly (decisions
    *  record: read-only in V1 beyond completion status). */
   markSessionCompletion: (id: string, status: "completed" | "missed") => Promise<boolean>;
@@ -23,6 +28,11 @@ export interface UseScheduledSessionsResult {
    *  category from local state (the DB relationship is ON DELETE CASCADE
    *  already, same pattern as events/flexible tasks). */
   removeScheduledSessionsByCategory: (categoryId: string) => void;
+  /** Cascades a flexible task delete — removes that task's own placed
+   *  sessions from local state (ON DELETE CASCADE handles it server-side;
+   *  without this, an already-rendered session block for the deleted task
+   *  would linger on the grid until the next full reload). */
+  removeScheduledSessionsByTask: (taskId: string) => void;
 }
 
 export function useScheduledSessions(
@@ -64,6 +74,17 @@ export function useScheduledSessions(
     };
   }, [supabase, userId]);
 
+  const getSessionsForDate = useCallback(
+    (date: Date, categories: Category[]): ScheduledSession[] => {
+      const iso = toISODate(date);
+      const checkedIds = new Set(categories.filter((c) => c.checked).map((c) => c.id));
+      return scheduledSessions
+        .filter((s) => s.date === iso)
+        .filter((s) => checkedIds.has(s.categoryId));
+    },
+    [scheduledSessions],
+  );
+
   const markSessionCompletion = useCallback(
     async (id: string, status: "completed" | "missed"): Promise<boolean> => {
       const prev = scheduledSessions;
@@ -94,12 +115,18 @@ export function useScheduledSessions(
     setScheduledSessionsState((cur) => cur.filter((s) => s.categoryId !== categoryId));
   }, []);
 
+  const removeScheduledSessionsByTask = useCallback((taskId: string) => {
+    setScheduledSessionsState((cur) => cur.filter((s) => s.taskId !== taskId));
+  }, []);
+
   return {
     scheduledSessions,
     scheduledSessionsLoading,
     scheduledSessionsError,
+    getSessionsForDate,
     markSessionCompletion,
     setScheduledSessions,
     removeScheduledSessionsByCategory,
+    removeScheduledSessionsByTask,
   };
 }

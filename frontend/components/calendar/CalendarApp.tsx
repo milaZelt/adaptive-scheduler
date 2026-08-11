@@ -9,6 +9,7 @@ import CalendarView from "./grid/CalendarView";
 import FixedEventForm from "./events/FixedEventForm";
 import FlexibleEventForm from "./events/FlexibleEventForm";
 import EventDetailModal from "./events/EventDetailModal";
+import SessionDetailModal from "./events/SessionDetailModal";
 import ResolveSessionsModal from "./events/ResolveSessionsModal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Toast from "@/components/ui/Toast";
@@ -32,6 +33,8 @@ function CalendarAppShell() {
     closeDrawer,
     detailEvent,
     closeEventDetail,
+    detailSession,
+    closeSessionDetail,
     confirmDialog,
     closeConfirmDialog,
     resolvePrompt,
@@ -47,20 +50,32 @@ function CalendarAppShell() {
     flexibleTasksError,
     scheduledSessionsLoading,
     scheduledSessionsError,
+    lastRunAtLoading,
+    lastRunAtError,
   } = useAppState();
 
   const reportedErrors = useRef(new Set<string>());
   useEffect(() => {
-    for (const msg of [categoriesError, eventsError, flexibleTasksError, scheduledSessionsError]) {
+    for (const msg of [
+      categoriesError,
+      eventsError,
+      flexibleTasksError,
+      scheduledSessionsError,
+      lastRunAtError,
+    ]) {
       if (msg && !reportedErrors.current.has(msg)) {
         reportedErrors.current.add(msg);
         showToast(msg);
       }
     }
-  }, [categoriesError, eventsError, flexibleTasksError, scheduledSessionsError, showToast]);
+  }, [categoriesError, eventsError, flexibleTasksError, scheduledSessionsError, lastRunAtError, showToast]);
 
   const initialLoading =
-    categoriesLoading || eventsLoading || flexibleTasksLoading || scheduledSessionsLoading;
+    categoriesLoading ||
+    eventsLoading ||
+    flexibleTasksLoading ||
+    scheduledSessionsLoading ||
+    lastRunAtLoading;
 
   return (
     <div className={styles.app}>
@@ -83,6 +98,10 @@ function CalendarAppShell() {
       )}
 
       {detailEvent && <EventDetailModal event={detailEvent} onClose={closeEventDetail} />}
+
+      {detailSession && (
+        <SessionDetailModal session={detailSession} onClose={closeSessionDetail} />
+      )}
 
       {confirmDialog && (
         <ConfirmDialog

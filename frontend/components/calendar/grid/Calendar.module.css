@@ -208,6 +208,16 @@
   font-size: 0.82rem;
 }
 
+/* Solver-placed sessions - read-only (no drag/resize affordance), dashed
+   left border distinguishes "Nextly placed this" from "you placed this". */
+.sessionBlock {
+  border-left-style: dashed;
+  cursor: pointer;
+}
+.sessionBlock.sessionResolved {
+  opacity: 0.55;
+}
+
 /* MONTH VIEW */
 .monthDowRow {
   display: grid;
@@ -269,4 +279,7 @@
   cursor: pointer;
   border: 1px solid transparent;
   padding: 0;
+}
+.monthDot.sessionDot {
+  border-style: dashed;
 }

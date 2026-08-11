@@ -5,6 +5,7 @@ import { useAppState } from "../state/AppStateContext";
 import { sameDay, toISODate } from "@/lib/calendar/dateUtils";
 import { START_HOUR, END_HOUR, ROW_HEIGHT, DOW_SHORT } from "@/lib/calendar/constants";
 import EventBlock from "./EventBlock";
+import SessionBlock from "./SessionBlock";
 import AllDayChip from "./AllDayChip";
 import styles from "./Calendar.module.css";
 
@@ -13,7 +14,7 @@ interface TimeGridProps {
 }
 
 export default function TimeGrid({ days }: TimeGridProps) {
-  const { today, categories, getEventsForDate } = useAppState();
+  const { today, categories, getEventsForDate, getSessionsForDate } = useAppState();
 
   const totalHeight = (END_HOUR - START_HOUR + 1) * ROW_HEIGHT;
   const colTemplate = `52px repeat(${days.length}, minmax(0, 1fr))`;
@@ -80,6 +81,7 @@ export default function TimeGrid({ days }: TimeGridProps) {
 
         {days.map((d, i) => {
           const timedEvents = getEventsForDate(d, categories).filter((e) => !e.allDay);
+          const sessions = getSessionsForDate(d, categories);
           return (
             <div
               key={`col-${i}`}
@@ -96,6 +98,9 @@ export default function TimeGrid({ days }: TimeGridProps) {
             >
               {timedEvents.map((e) => (
                 <EventBlock key={e.id} event={e} />
+              ))}
+              {sessions.map((s) => (
+                <SessionBlock key={s.id} session={s} />
               ))}
             </div>
           );

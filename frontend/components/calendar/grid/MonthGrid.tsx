@@ -12,7 +12,15 @@ interface MonthGridProps {
 }
 
 export default function MonthGrid({ anchor }: MonthGridProps) {
-  const { today, categories, getEventsForDate, openEventDetail } = useAppState();
+  const {
+    today,
+    categories,
+    getEventsForDate,
+    getSessionsForDate,
+    getFlexibleTaskById,
+    openEventDetail,
+    openSessionDetail,
+  } = useAppState();
   const days = getMonthGridDays(anchor);
   const month = anchor.getMonth();
 
@@ -30,6 +38,7 @@ export default function MonthGrid({ anchor }: MonthGridProps) {
           const inMonth = d.getMonth() === month;
           const isToday = sameDay(d, today);
           const dayEvents = getEventsForDate(d, categories);
+          const daySessions = getSessionsForDate(d, categories);
 
           return (
             <div
@@ -52,6 +61,22 @@ export default function MonthGrid({ anchor }: MonthGridProps) {
                         borderColor: cat ? shadeColor(cat.color, -30) : "#999999",
                       }}
                       onClick={() => openEventDetail(e)}
+                    />
+                  );
+                })}
+                {daySessions.map((s) => {
+                  const cat = categories.find((c) => c.id === s.categoryId);
+                  const taskTitle = getFlexibleTaskById(s.taskId)?.title ?? "Untitled task";
+                  return (
+                    <button
+                      key={s.id}
+                      className={`${styles.monthDot} ${styles.sessionDot}`}
+                      title={taskTitle}
+                      style={{
+                        background: cat ? cat.color : "#cccccc",
+                        borderColor: cat ? shadeColor(cat.color, -30) : "#999999",
+                      }}
+                      onClick={() => openSessionDetail(s)}
                     />
                   );
                 })}

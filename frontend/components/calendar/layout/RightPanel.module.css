@@ -76,6 +76,18 @@
   background: var(--danger);
 }
 
+.taskSection {
+  margin-top: 1.5rem;
+}
+.taskSectionLabel {
+  font-family: var(--font-sans);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.6rem;
+}
+
 .taskRow {
   display: flex;
   align-items: center;

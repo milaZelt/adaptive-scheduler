@@ -78,6 +78,12 @@ export interface FlexibleTask {
   sessionMax: number | null;
   description?: string;
   schedulingStatus: SchedulingStatus;
+  createdAt: string; // ISO timestamp
+  updatedAt: string; // ISO timestamp - equals createdAt at insert time, bumped by the DB
+  // trigger on every update (including the status update Update Schedule
+  // itself performs) - the staleness check (Ticket 5) compares this against
+  // schedule_runs.updated_at to tell "changed since the last run" apart from
+  // "just re-confirmed by that same run."
 }
 
 export type SessionCompletionStatus = "unresolved" | "completed" | "missed";
@@ -104,6 +110,7 @@ export interface ScheduledSession {
   end: number;
   placementReason: PlacementReason | null;
   completionStatus: SessionCompletionStatus;
+  updatedAt: string; // ISO timestamp - bumped when markSessionCompletion changes this row.
 }
 
 /** A past scheduled session the user hasn't answered Completed/Missed for
@@ -119,5 +126,10 @@ export interface UnresolvedSessionInfo {
 /** POST /api/update-schedule response. */
 export type UpdateScheduleResponse =
   | { status: "blocked"; unresolvedSessions: UnresolvedSessionInfo[] }
-  | { status: "ok"; flexibleTasks: FlexibleTask[]; scheduledSessions: ScheduledSession[] }
+  | {
+      status: "ok";
+      flexibleTasks: FlexibleTask[];
+      scheduledSessions: ScheduledSession[];
+      lastRunAt: string; // ISO timestamp - schedule_runs.updated_at as of this same transaction.
+    }
   | { status: "error"; message: string };

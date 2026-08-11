@@ -13,6 +13,7 @@ interface UseUpdateScheduleParams {
   today: Date;
   setFlexibleTasks: (tasks: FlexibleTask[]) => void;
   setScheduledSessions: (sessions: ScheduledSession[]) => void;
+  setLastRunAt: (date: Date | null) => void;
   showToast: (msg: string) => void;
 }
 
@@ -29,6 +30,7 @@ export function useUpdateSchedule({
   today,
   setFlexibleTasks,
   setScheduledSessions,
+  setLastRunAt,
   showToast,
 }: UseUpdateScheduleParams): UseUpdateScheduleResult {
   const [updatingSchedule, setUpdatingSchedule] = useState(false);
@@ -67,8 +69,9 @@ export function useUpdateSchedule({
 
     setFlexibleTasks(response.flexibleTasks);
     setScheduledSessions(response.scheduledSessions);
+    setLastRunAt(new Date(response.lastRunAt));
     showToast("Schedule updated");
-  }, [updatingSchedule, today, setFlexibleTasks, setScheduledSessions, showToast]);
+  }, [updatingSchedule, today, setFlexibleTasks, setScheduledSessions, setLastRunAt, showToast]);
 
   const closeResolvePrompt = useCallback(() => setResolvePrompt(null), []);
 
