@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { GOOGLE_CALENDAR_SCOPE } from "@/lib/google/constants";
 import styles from "./LoginSection.module.css";
 
 export default function LoginSection() {
@@ -16,6 +17,11 @@ export default function LoginSection() {
       provider: "google",
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
+        scopes: GOOGLE_CALENDAR_SCOPE,
+        queryParams: {
+          access_type: "offline",
+          prompt: "consent",
+        },
       },
     });
     if (error) {
