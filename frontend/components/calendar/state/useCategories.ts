@@ -115,7 +115,7 @@ export function useCategories(
     (name: string, color: string) => {
       const prev = categories;
       const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      const optimistic: Category = { id: tempId, name, color, checked: true };
+      const optimistic: Category = { id: tempId, name, color, checked: true, isGoogleImport: false };
       setCategories((cur) => [...cur, optimistic]);
 
       supabase

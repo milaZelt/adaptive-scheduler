@@ -3,6 +3,12 @@ export interface Category {
   name: string;
   color: string;
   checked: boolean;
+  /** True only for the one reserved category Google Calendar imports land
+   *  in (Ticket 8) - imported events are read-only mirrors of a real Google
+   *  event, so this category is excluded from new event/task creation
+   *  (nothing the user creates locally can actually be "added into" Google)
+   *  and can't be renamed (CategoryRow.tsx). */
+  isGoogleImport: boolean;
 }
 
 export type EventType = "fixed" | "flexible";

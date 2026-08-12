@@ -36,49 +36,42 @@ async function parseToday(request: Request): Promise<NextResponse | Date> {
   return todayDate;
 }
 
-/** Finds the category imports should land in, creating it the first time
- *  and remembering its id on google_credentials so that if the user later
- *  renames it, the next import still lands there instead of a second
- *  "Google Calendar" category getting silently recreated. */
+/** Finds the category imports should land in, creating it the first time.
+ *  Found by its own is_google_import flag, not by name - a user renaming
+ *  "Google Calendar" still gets the next import there instead of a second
+ *  one getting silently recreated. The same flag is also what
+ *  FlexibleEventForm.tsx uses client-side to keep this category out of new
+ *  task creation, since nothing created locally can actually be "added
+ *  into" Google. */
 async function resolveImportCategoryId(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<NextResponse | string> {
-  const { data: creds, error: credsError } = await supabase
-    .from("google_credentials")
-    .select("import_category_id")
+  const { data: existing, error: existingError } = await supabase
+    .from("categories")
+    .select("id")
     .eq("user_id", userId)
-    .maybeSingle<{ import_category_id: string | null }>();
+    .eq("is_google_import", true)
+    .maybeSingle();
 
-  if (credsError) return errorResponse("Couldn't read your Google connection.", 500);
-
-  if (creds?.import_category_id) {
-    const { data: existing } = await supabase
-      .from("categories")
-      .select("id")
-      .eq("id", creds.import_category_id)
-      .eq("user_id", userId)
-      .maybeSingle();
-    if (existing) return creds.import_category_id;
-    // Category was deleted since it was linked - fall through and create a
-    // fresh one below rather than failing the import over it.
-  }
+  if (existingError) return errorResponse("Couldn't read your calendars.", 500);
+  if (existing) return existing.id as string;
 
   const { data: created, error: createError } = await supabase
     .from("categories")
-    .insert({ user_id: userId, name: IMPORT_CATEGORY_NAME, color: IMPORT_CATEGORY_COLOR, checked: true })
+    .insert({
+      user_id: userId,
+      name: IMPORT_CATEGORY_NAME,
+      color: IMPORT_CATEGORY_COLOR,
+      checked: true,
+      is_google_import: true,
+    })
     .select("id")
     .single();
 
   if (createError || !created) {
     return errorResponse("Couldn't set up a category for imported events.", 500);
   }
-
-  const { error: linkError } = await supabase
-    .from("google_credentials")
-    .update({ import_category_id: created.id })
-    .eq("user_id", userId);
-  if (linkError) return errorResponse("Couldn't save your import category.", 500);
 
   return created.id as string;
 }

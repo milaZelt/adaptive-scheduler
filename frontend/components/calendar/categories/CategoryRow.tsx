@@ -4,7 +4,7 @@ import React, { useRef, useState } from "react";
 import type { Category } from "@/lib/calendar/types";
 import { useAppState } from "../state/AppStateContext";
 import Popover from "@/components/ui/Popover";
-import ContextMenu from "@/components/ui/ContextMenu";
+import ContextMenu, { type ContextMenuItem } from "@/components/ui/ContextMenu";
 import Button from "@/components/ui/Button";
 import ColorPicker from "./ColorPicker";
 import styles from "./CategoryRow.module.css";
@@ -47,6 +47,34 @@ export default function CategoryRow({ category }: CategoryRowProps) {
     });
   }
 
+  // The import category is found by its is_google_import flag (see
+  // resolveImportCategoryId), not by name, so renaming it wouldn't actually
+  // break the next import - this is blocked anyway so the name stays an
+  // honest label for what the category actually contains.
+  const menuItems: ContextMenuItem[] = [
+    ...(category.isGoogleImport
+      ? []
+      : [
+          {
+            label: "Rename",
+            onClick: () => {
+              setMenuAnchor(null);
+              setRenameValue(category.name);
+              setRenameAnchor(menuBtnRef.current?.getBoundingClientRect() ?? null);
+            },
+          },
+        ]),
+    {
+      label: "Change Color",
+      onClick: () => {
+        setMenuAnchor(null);
+        setPendingColor(category.color);
+        setColorAnchor(dotRef.current?.getBoundingClientRect() ?? null);
+      },
+    },
+    { label: "Delete", danger: true, onClick: handleDeleteClick },
+  ];
+
   return (
     <div className={`${styles.row} ${category.checked ? "" : styles.off}`}>
       <div
@@ -82,29 +110,7 @@ export default function CategoryRow({ category }: CategoryRowProps) {
       </button>
 
       {menuAnchor && (
-        <ContextMenu
-          anchorRect={menuAnchor}
-          onClose={() => setMenuAnchor(null)}
-          items={[
-            {
-              label: "Rename",
-              onClick: () => {
-                setMenuAnchor(null);
-                setRenameValue(category.name);
-                setRenameAnchor(menuBtnRef.current?.getBoundingClientRect() ?? null);
-              },
-            },
-            {
-              label: "Change Color",
-              onClick: () => {
-                setMenuAnchor(null);
-                setPendingColor(category.color);
-                setColorAnchor(dotRef.current?.getBoundingClientRect() ?? null);
-              },
-            },
-            { label: "Delete", danger: true, onClick: handleDeleteClick },
-          ]}
-        />
+        <ContextMenu anchorRect={menuAnchor} onClose={() => setMenuAnchor(null)} items={menuItems} />
       )}
 
       {renameAnchor && (

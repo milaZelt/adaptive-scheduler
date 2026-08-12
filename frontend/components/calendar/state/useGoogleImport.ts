@@ -15,6 +15,10 @@ interface UseGoogleImportParams {
 
 export interface UseGoogleImportResult {
   importingGoogleCalendar: boolean;
+  /** True once a Google Calendar import has succeeded this session - shown
+   *  as a persistent Status-area line (StatusList.tsx), not a toast, since
+   *  the toast already disappears before the user necessarily looks over. */
+  googleCalendarImported: boolean;
   importGoogleCalendar: () => Promise<void>;
 }
 
@@ -25,6 +29,7 @@ export function useGoogleImport({
   reportSystemError,
 }: UseGoogleImportParams): UseGoogleImportResult {
   const [importingGoogleCalendar, setImportingGoogleCalendar] = useState(false);
+  const [googleCalendarImported, setGoogleCalendarImported] = useState(false);
 
   const importGoogleCalendar = useCallback(async () => {
     if (importingGoogleCalendar) return;
@@ -56,8 +61,9 @@ export function useGoogleImport({
     }
 
     setEvents(response.events);
-    showToast("Google Calendar imported");
+    setGoogleCalendarImported(true);
+    showToast("Google Calendar was imported successfully");
   }, [importingGoogleCalendar, today, setEvents, showToast, reportSystemError]);
 
-  return { importingGoogleCalendar, importGoogleCalendar };
+  return { importingGoogleCalendar, googleCalendarImported, importGoogleCalendar };
 }

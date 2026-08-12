@@ -34,6 +34,11 @@ export default function FixedEventForm({ prefill, onClose }: FixedEventFormProps
   const isEdit = !!prefill;
   const [saving, setSaving] = useState(false);
 
+  // Google Calendar's imports are a read-only mirror of real Google events -
+  // nothing created here can actually be "added into" Google, so that
+  // category is never a valid choice for a new (or edited) event.
+  const selectableCategories = categories.filter((c) => !c.isGoogleImport);
+
   const initialDate = prefill ? parseLocalDate(prefill.date) : new Date(currentDate);
 
   const [title, setTitle] = useState(prefill?.title ?? "");
@@ -52,7 +57,7 @@ export default function FixedEventForm({ prefill, onClose }: FixedEventFormProps
     prefill?.customRecurrence ?? defaultCustomRecurrence(initialDate),
   );
   const [description, setDescription] = useState(prefill?.description ?? "");
-  const [categoryId, setCategoryId] = useState(prefill?.categoryId ?? categories[0]?.id ?? "");
+  const [categoryId, setCategoryId] = useState(prefill?.categoryId ?? selectableCategories[0]?.id ?? "");
 
   const dateForLabels = (() => {
     const d = parseLocalDate(date);
@@ -201,7 +206,7 @@ export default function FixedEventForm({ prefill, onClose }: FixedEventFormProps
         <Select
           value={categoryId}
           onChange={setCategoryId}
-          options={categories.map((c) => ({ value: c.id, label: c.name, color: c.color }))}
+          options={selectableCategories.map((c) => ({ value: c.id, label: c.name, color: c.color }))}
           placeholder="Select calendar"
         />
       </div>

@@ -49,8 +49,8 @@ export default function ResolveSessionsModal({ sessions, onClose, onResolved }: 
     <Modal onClose={onClose}>
       <div className={styles.title}>What happened with these?</div>
       <p className={styles.intro}>
-        Before updating your schedule, let Nextly know whether these past sessions actually happened —
-        it needs this to know how much work remains.
+        Before updating your schedule, let Nextly know whether these past sessions actually happened.
+        It needs this to know how much work remains.
       </p>
 
       <div className={styles.list}>

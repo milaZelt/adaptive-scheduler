@@ -65,7 +65,7 @@ export default function EventDetailModal({ event, onClose }: EventDetailModalPro
         <div className={styles.whySection}>
           <div className={styles.whyLabel}>Imported</div>
           <p className={styles.whyText}>
-            This event comes from Google Calendar and can&rsquo;t be edited here — it refreshes the next
+            This event comes from Google Calendar and can&rsquo;t be edited here. It refreshes the next
             time you import.
           </p>
         </div>

@@ -19,6 +19,7 @@ export interface CategoryRow {
   name: string;
   color: string;
   checked: boolean;
+  is_google_import: boolean;
 }
 
 export function categoryFromRow(row: CategoryRow): Category {
@@ -27,6 +28,7 @@ export function categoryFromRow(row: CategoryRow): Category {
     name: row.name,
     color: row.color,
     checked: row.checked,
+    isGoogleImport: row.is_google_import,
   };
 }
 

@@ -19,7 +19,7 @@ function metaLabel(t: FlexibleTask): string {
     case "couldnt_fit":
       return `Couldn't fit before ${fmtShortDate(t.deadline)}`;
     case "overdue":
-      return `Deadline passed — ${fmtShortDate(t.deadline)}`;
+      return `Deadline passed on ${fmtShortDate(t.deadline)}`;
     default:
       return `${t.priority} · due ${fmtShortDate(t.deadline)} · ${estimateLabel(t)}`;
   }
@@ -39,6 +39,7 @@ export default function StatusList() {
     events,
     today,
     lastRunAt,
+    googleCalendarImported,
     getCategory,
     openFlexibleEventDrawer,
     deleteFlexibleTask,
@@ -91,9 +92,16 @@ export default function StatusList() {
       <div className={styles.statusItem}>
         <span className={`${styles.dot} ${staleness.stale ? styles.warn : ""}`} />
         {staleness.stale
-          ? `Schedule needs updating — ${staleness.reasons.join(", ")}`
+          ? `Schedule needs updating: ${staleness.reasons.join(", ")}`
           : "Schedule up to date"}
       </div>
+
+      {googleCalendarImported && (
+        <div className={styles.statusItem}>
+          <span className={styles.dot} />
+          Google Calendar imported successfully
+        </div>
+      )}
 
       {SECTIONS.map(({ status, label }) => {
         const tasks = flexibleTasks.filter((t) => t.schedulingStatus === status);

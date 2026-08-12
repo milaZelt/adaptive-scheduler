@@ -30,7 +30,7 @@ function explainPlacement(reason: PlacementReason): string {
 
   if (reason.blockedBy) {
     const { title, start, end } = reason.blockedBy;
-    return `${priorityClause} — your ${title} (${fmtHour(start)}–${fmtHour(end)}) was in the way, so it landed here instead.${splitSuffix}`;
+    return `${priorityClause}, but your ${title} (${fmtHour(start)}–${fmtHour(end)}) was in the way, so it landed here instead.${splitSuffix}`;
   }
   return `${priorityClause}, so it was scheduled as soon as possible.${splitSuffix}`;
 }

@@ -31,6 +31,7 @@ interface AppState
   closeResolvePrompt: () => void;
   updateSchedule: () => Promise<void>;
   importingGoogleCalendar: boolean;
+  googleCalendarImported: boolean;
   importGoogleCalendar: () => Promise<void>;
   currentDate: Date;
   currentView: ViewType;
@@ -134,7 +135,7 @@ export function AppStateProvider({
     reportSystemError,
   });
 
-  const { importingGoogleCalendar, importGoogleCalendar } = useGoogleImport({
+  const { importingGoogleCalendar, googleCalendarImported, importGoogleCalendar } = useGoogleImport({
     today,
     setEvents: eventsApi.setEvents,
     showToast,
@@ -247,6 +248,7 @@ export function AppStateProvider({
     closeResolvePrompt,
     updateSchedule,
     importingGoogleCalendar,
+    googleCalendarImported,
     importGoogleCalendar,
     currentDate,
     currentView,

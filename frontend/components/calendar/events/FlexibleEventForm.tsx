@@ -98,6 +98,11 @@ export default function FlexibleEventForm({ prefill, onClose }: FlexibleEventFor
   const isEdit = !!prefill;
   const [saving, setSaving] = useState(false);
 
+  // Google Calendar's imports are a read-only mirror of real Google events -
+  // nothing created here can actually be "added into" Google, so that
+  // category is never a valid choice for a new (or edited) task.
+  const selectableCategories = categories.filter((c) => !c.isGoogleImport);
+
   const [title, setTitle] = useState(prefill?.title ?? "");
   const [deadline, setDeadline] = useState(prefill?.deadline ?? "");
 
@@ -110,7 +115,7 @@ export default function FlexibleEventForm({ prefill, onClose }: FlexibleEventFor
 
   const [description, setDescription] = useState(prefill?.description ?? "");
   const [priority, setPriority] = useState<Priority | "">(prefill?.priority ?? "");
-  const [categoryId, setCategoryId] = useState(prefill?.categoryId ?? categories[0]?.id ?? "");
+  const [categoryId, setCategoryId] = useState(prefill?.categoryId ?? selectableCategories[0]?.id ?? "");
 
   // Horizon check (decisions record, round 3): a deadline beyond the rolling
   // planning window isn't tracked long-term. Rather than collect a second,
@@ -206,7 +211,7 @@ export default function FlexibleEventForm({ prefill, onClose }: FlexibleEventFor
         <div className={fieldStyles.horizonNotice}>
           <p className={fieldStyles.horizonNoticeText}>
             That&rsquo;s outside Nextly&rsquo;s {PLANNING_HORIZON_DAYS}-day planning window (through{" "}
-            {horizonEndLabel}). Set a deadline within that window for what you want done now — Time
+            {horizonEndLabel}). Set a deadline within that window for what you want done now. Time
             Estimate below is for that portion of the work.
           </p>
           <Button variant="plain" size="mini" onClick={() => setDeadline(horizonEndISO)}>
@@ -281,7 +286,7 @@ export default function FlexibleEventForm({ prefill, onClose }: FlexibleEventFor
         <Select
           value={categoryId}
           onChange={setCategoryId}
-          options={categories.map((c) => ({ value: c.id, label: c.name, color: c.color }))}
+          options={selectableCategories.map((c) => ({ value: c.id, label: c.name, color: c.color }))}
           placeholder="Select calendar"
         />
       </div>
