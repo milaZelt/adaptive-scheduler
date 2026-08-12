@@ -13,6 +13,8 @@ An adaptive scheduler that plans your week around fixed commitments and fits fle
 cd frontend
 npm install
 npm run dev
+
+uvicorn
 ```
 
 See [`frontend/README.md`](frontend/README.md) for frontend-specific details.
