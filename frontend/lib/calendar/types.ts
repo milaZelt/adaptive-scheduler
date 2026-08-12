@@ -90,12 +90,22 @@ export type SessionCompletionStatus = "unresolved" | "completed" | "missed";
 
 /** Structured facts captured at solve time - templated into an explanation
  *  at display time (Ticket 6). Captured then because "why" is a claim about
- *  calendar state at the moment of solving, not reconstructable later. */
+ *  calendar state at the moment of solving, not reconstructable later.
+ *  Deliberately limited to what's honestly derivable from the solver's
+ *  actual inputs/outputs (tier composition, calendar adjacency) - not a
+ *  claim about the solver's internal search (e.g. "beat task X for this
+ *  exact slot"), which isn't something a single solve's result data can
+ *  truthfully support. */
 export interface PlacementReason {
   priority: Priority;
   deadline: string; // the task's deadline at solve time, ISO 'YYYY-MM-DD'
   sessionIndex: number; // 1-based - which of this task's sessions this is
   sessionCount: number; // how many sessions this task was split into
+  otherTierTasksCount: number; // other tasks sharing this priority, at solve time
+  // The nearest same-day item (fixed event or another flexible session)
+  // ending close enough before this session's start to plausibly be why it
+  // couldn't land earlier - null if nothing was close enough to credit.
+  blockedBy: { title: string; start: number; end: number } | null;
 }
 
 /** One placed block of a flexible task - solver output. Read-only in V1

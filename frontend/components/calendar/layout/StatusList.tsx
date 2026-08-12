@@ -4,16 +4,11 @@ import React, { useMemo } from "react";
 import type { FlexibleTask, SchedulingStatus } from "@/lib/calendar/types";
 import { useAppState } from "../state/AppStateContext";
 import { computeStaleness } from "@/lib/calendar/staleness";
+import { fmtShortDate } from "@/lib/calendar/dateUtils";
 import styles from "./RightPanel.module.css";
 
 function estimateLabel(t: FlexibleTask): string {
   return `${t.estimateHours}h`;
-}
-
-function deadlineLabel(iso: string): string {
-  const d = new Date(iso + "T00:00:00");
-  if (isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 /** Each state implies a different next action (decisions record) - couldn't
@@ -22,11 +17,11 @@ function deadlineLabel(iso: string): string {
 function metaLabel(t: FlexibleTask): string {
   switch (t.schedulingStatus) {
     case "couldnt_fit":
-      return `Couldn't fit before ${deadlineLabel(t.deadline)}`;
+      return `Couldn't fit before ${fmtShortDate(t.deadline)}`;
     case "overdue":
-      return `Deadline passed — ${deadlineLabel(t.deadline)}`;
+      return `Deadline passed — ${fmtShortDate(t.deadline)}`;
     default:
-      return `${t.priority} · due ${deadlineLabel(t.deadline)} · ${estimateLabel(t)}`;
+      return `${t.priority} · due ${fmtShortDate(t.deadline)} · ${estimateLabel(t)}`;
   }
 }
 

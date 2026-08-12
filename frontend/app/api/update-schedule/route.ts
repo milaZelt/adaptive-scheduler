@@ -29,6 +29,13 @@ interface SolverBusyInterval {
   end_hour: number;
 }
 
+/** SolverBusyInterval plus a display name - the solver itself never sees the
+ *  title (stripped before the request payload), but explainability needs to
+ *  name what it was. */
+interface NamedBusyInterval extends SolverBusyInterval {
+  title: string;
+}
+
 interface SolverTaskIn {
   id: string;
   priority: string;
@@ -134,28 +141,30 @@ async function checkForUnresolvedPastSessions(
 }
 
 /** Fixed events, expanded per horizon day into the flat busy-interval shape
- *  the solver expects. All-day events block the whole day, not just the
- *  solver's own 8AM-11PM window - "all day" means all day. */
+ *  the solver expects, plus each interval's source title (kept only for
+ *  explainability's use after the solve - the solver's own request payload
+ *  strips it back out, see POST). All-day events block the whole day, not
+ *  just the solver's own 8AM-11PM window - "all day" means all day. */
 async function gatherBusyIntervals(
   supabase: SupabaseClient,
   userId: string,
   horizon: PlanningHorizon,
-): Promise<NextResponse | SolverBusyInterval[]> {
+): Promise<NextResponse | NamedBusyInterval[]> {
   const { data: eventRows, error } = await supabase.from("events").select("*").eq("user_id", userId);
   if (error) {
     return errorResponse("Couldn't load your fixed events.", 500);
   }
 
   const events = ((eventRows ?? []) as EventRow[]).map(eventFromRow);
-  const busyIntervals: SolverBusyInterval[] = [];
+  const busyIntervals: NamedBusyInterval[] = [];
   for (let dayOffset = 0; dayOffset < horizon.days.length; dayOffset++) {
     const day = horizon.days[dayOffset];
     for (const event of events) {
       if (!eventOccursOnDate(event, day)) continue;
       if (event.allDay) {
-        busyIntervals.push({ day: dayOffset, start_hour: 0, end_hour: 24 });
+        busyIntervals.push({ day: dayOffset, start_hour: 0, end_hour: 24, title: event.title });
       } else if (event.start !== null && event.end !== null) {
-        busyIntervals.push({ day: dayOffset, start_hour: event.start, end_hour: event.end });
+        busyIntervals.push({ day: dayOffset, start_hour: event.start, end_hour: event.end, title: event.title });
       }
     }
   }
@@ -350,6 +359,12 @@ function buildSessionsToInsert(
     resolvedStatuses.set(taskId, result.scheduled ? "scheduled" : "couldnt_fit");
     if (!result.scheduled) continue;
 
+    // Trivial to compute here (just this task's own tier + the already-in-
+    // scope full task list) - blockedBy needs cross-session adjacency data
+    // that isn't available until every task's sessions exist, so that part
+    // is filled in afterward by attachBlockedByReasons.
+    const otherTierTasksCount = allTasks.filter((t) => t.priority === task.priority && t.id !== task.id).length;
+
     const orderedSessions = (sessionsByTask.get(taskId) ?? []).sort(
       (a, b) => a.day - b.day || a.start_hour - b.start_hour,
     );
@@ -365,12 +380,84 @@ function buildSessionsToInsert(
           deadline: task.deadline,
           sessionIndex: index + 1,
           sessionCount: orderedSessions.length,
+          otherTierTasksCount,
+          blockedBy: null,
         },
       });
     });
   }
 
   return sessionsToInsert;
+}
+
+// Loose enough to survive minor rounding in decimal-hour arithmetic, tight
+// enough to only credit something that's plausibly THE reason (the solver's
+// own 30-min padding rule) rather than just "somewhere earlier that day."
+// This is a display heuristic for explainability, not a scheduling rule -
+// being a few minutes off only makes an explanation slightly less precise;
+// the persisted schedule itself never depends on this value.
+const BLOCKED_BY_WINDOW_HOURS = 32 / 60;
+
+interface BlockerCandidate {
+  title: string;
+  start: number;
+  end: number;
+  gap: number; // minutes (as decimal hours) between this candidate's end and the session's start
+}
+
+/** Appends {title, start, end} as a blockedBy candidate iff it ends within
+ *  BLOCKED_BY_WINDOW_HOURS before sessionStart - the one check shared by
+ *  both candidate sources below (a fixed event, or another task's session). */
+function addBlockerCandidateIfClose(
+  candidates: BlockerCandidate[],
+  sessionStart: number,
+  title: string,
+  start: number,
+  end: number,
+): void {
+  const gap = sessionStart - end;
+  if (gap >= 0 && gap <= BLOCKED_BY_WINDOW_HOURS) {
+    candidates.push({ title, start, end, gap });
+  }
+}
+
+/** For each inserted session, finds the nearest same-day thing (a fixed
+ *  event, or another task's session also being inserted this run) ending
+ *  close enough before its start to plausibly be why it couldn't land
+ *  earlier, and fills in placement_reason.blockedBy. Mutates in place -
+ *  sessionsToInsert is a freshly-built array with no other owners. */
+function attachBlockedByReasons(
+  sessionsToInsert: SessionToInsert[],
+  namedBusyIntervals: NamedBusyInterval[],
+  allTasks: FlexibleTask[],
+  horizon: PlanningHorizon,
+): void {
+  const taskById = new Map(allTasks.map((t) => [t.id, t]));
+
+  for (const session of sessionsToInsert) {
+    const candidates: BlockerCandidate[] = [];
+
+    for (const nbi of namedBusyIntervals) {
+      if (toISODate(horizon.days[nbi.day]) !== session.date) continue;
+      addBlockerCandidateIfClose(candidates, session.start_time, nbi.title, nbi.start_hour, nbi.end_hour);
+    }
+    for (const other of sessionsToInsert) {
+      // Not the same session, and not another split of the same task - two
+      // sessions of one task being padding-separated is real (the solver
+      // does apply padding there too), but naming a task as its own
+      // blocker reads as confusing self-reference rather than an explanation.
+      if (other === session || other.task_id === session.task_id || other.date !== session.date) continue;
+      // Practically unreachable (sessionsToInsert's task_ids all come from
+      // allTasks/taskById in buildSessionsToInsert) - kept grammatically
+      // safe anyway, since this gets prefixed with "your" at display time.
+      const otherTitle = taskById.get(other.task_id)?.title ?? "other session";
+      addBlockerCandidateIfClose(candidates, session.start_time, otherTitle, other.start_time, other.end_time);
+    }
+
+    if (candidates.length === 0) continue;
+    const nearest = candidates.reduce((a, b) => (a.gap <= b.gap ? a : b));
+    session.placement_reason.blockedBy = { title: nearest.title, start: nearest.start, end: nearest.end };
+  }
 }
 
 /** The transactional delete-then-insert-then-status-update - a single RPC
@@ -440,8 +527,15 @@ export async function POST(request: Request) {
   const blockedOrError = await checkForUnresolvedPastSessions(supabase, user.id, horizon);
   if (blockedOrError) return blockedOrError;
 
-  const busyIntervals = await gatherBusyIntervals(supabase, user.id, horizon);
-  if (busyIntervals instanceof NextResponse) return busyIntervals;
+  const namedBusyIntervals = await gatherBusyIntervals(supabase, user.id, horizon);
+  if (namedBusyIntervals instanceof NextResponse) return namedBusyIntervals;
+  // The solver's own request/validation only need day/start/end - title is
+  // explainability-only, added after the solve (see attachBlockedByReasons).
+  const busyIntervals: SolverBusyInterval[] = namedBusyIntervals.map(({ day, start_hour, end_hour }) => ({
+    day,
+    start_hour,
+    end_hour,
+  }));
 
   const eligible = await gatherEligibleTasks(supabase, user.id, horizon);
   if (eligible instanceof NextResponse) return eligible;
@@ -458,6 +552,7 @@ export async function POST(request: Request) {
   }
 
   const sessionsToInsert = buildSessionsToInsert(solverResult, allTasks, horizon, resolvedStatuses);
+  attachBlockedByReasons(sessionsToInsert, namedBusyIntervals, allTasks, horizon);
 
   const persistError = await persistScheduleUpdate(supabase, user.id, horizon, sessionsToInsert, resolvedStatuses);
   if (persistError) return persistError;

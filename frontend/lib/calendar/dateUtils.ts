@@ -24,6 +24,16 @@ export function fmtHour(t: number): string {
   return mm === 0 ? `${h12} ${suffix}` : `${h12}:${pad(mm)} ${suffix}`;
 }
 
+/** ISO 'YYYY-MM-DD' -> 'Aug 15'. No year - every date this app displays
+ *  this way falls within the 14-day planning horizon, always "this year,
+ *  very soon" (contrast recurrence.ts's own date formatter, which includes
+ *  the year since a recurrence end date can be far in the future). */
+export function fmtShortDate(iso: string): string {
+  const d = new Date(iso + "T00:00:00");
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
 /** Decimal hour -> '13:30' for <input type="time"> value. */
 export function decimalToTimeInput(t: number): string {
   const hh = Math.floor(t);

@@ -39,6 +39,26 @@
   color: var(--muted);
   font-style: italic;
 }
+.whySection {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.9rem 1rem;
+  margin-bottom: 1.75rem;
+}
+.whyLabel {
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.4rem;
+}
+.whyText {
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  color: var(--ink);
+  line-height: 1.6;
+}
 .actions {
   display: flex;
   justify-content: space-between;
