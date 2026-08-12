@@ -10,11 +10,14 @@ An adaptive scheduler that plans your week around fixed commitments and fits fle
 ## Getting started
 
 ```bash
+cd backend
+source .venv/bin/activate
+uvicorn api.main:app --reload --port 8000
+
 cd frontend
 npm install
 npm run dev
 
-uvicorn
 ```
 
 See [`frontend/README.md`](frontend/README.md) for frontend-specific details.
