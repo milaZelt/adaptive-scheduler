@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React from "react";
+import { useEscapeKey } from "@/components/ui/useEscapeKey";
 import styles from "./Drawer.module.css";
 
 interface DrawerProps {
@@ -11,13 +12,7 @@ interface DrawerProps {
 }
 
 export default function Drawer({ title, onClose, footer, children }: DrawerProps) {
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  useEscapeKey(onClose);
 
   return (
     <>

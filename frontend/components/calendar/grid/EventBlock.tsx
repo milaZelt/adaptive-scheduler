@@ -41,8 +41,11 @@ export default function EventBlock({ event }: EventBlockProps) {
   // Recurring events are edited as a whole series via the form (see
   // lib/calendar/recurrence.ts) — dragging one occurrence would otherwise
   // ambiguously shift the whole series' anchor date, so only plain
-  // non-repeating events support direct drag/resize on the grid.
-  const draggable = (event.repeat ?? "none") === "none";
+  // non-repeating events support direct drag/resize on the grid. Imported
+  // Google events are excluded too - they're a read-only copy, replaced
+  // wholesale on the next import, so a local drag would just be silently
+  // discarded rather than actually rescheduling anything on Google.
+  const draggable = (event.repeat ?? "none") === "none" && event.source !== "google";
 
   const top = (start - START_HOUR) * ROW_HEIGHT;
   const baseHeight = Math.max(duration * ROW_HEIGHT, 26);

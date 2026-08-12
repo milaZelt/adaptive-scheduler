@@ -15,6 +15,7 @@ export default function MonthGrid({ anchor }: MonthGridProps) {
   const {
     today,
     categories,
+    getCategory,
     getEventsForDate,
     getSessionsForDate,
     getFlexibleTaskById,
@@ -50,7 +51,7 @@ export default function MonthGrid({ anchor }: MonthGridProps) {
               <div className={styles.monthDate}>{d.getDate()}</div>
               <div className={styles.monthDots}>
                 {dayEvents.map((e) => {
-                  const cat = categories.find((c) => c.id === e.categoryId);
+                  const cat = getCategory(e.categoryId);
                   return (
                     <button
                       key={e.id}
@@ -65,7 +66,7 @@ export default function MonthGrid({ anchor }: MonthGridProps) {
                   );
                 })}
                 {daySessions.map((s) => {
-                  const cat = categories.find((c) => c.id === s.categoryId);
+                  const cat = getCategory(s.categoryId);
                   const taskTitle = getFlexibleTaskById(s.taskId)?.title ?? "Untitled task";
                   return (
                     <button

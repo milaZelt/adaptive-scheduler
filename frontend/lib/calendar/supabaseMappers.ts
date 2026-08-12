@@ -2,6 +2,7 @@ import type {
   CalendarEvent,
   Category,
   CustomRecurrence,
+  EventSource,
   EventType,
   FlexibleTask,
   PlacementReason,
@@ -44,6 +45,8 @@ export interface EventRow {
   description: string | null;
   repeat: RepeatOption;
   custom_recurrence: CustomRecurrence | null;
+  source: EventSource;
+  google_event_id: string | null;
 }
 
 function toNumberOrNull(value: number | string | null): number | null {
@@ -63,6 +66,8 @@ export function eventFromRow(row: EventRow): CalendarEvent {
     description: row.description ?? undefined,
     repeat: row.repeat,
     customRecurrence: row.custom_recurrence ?? undefined,
+    source: row.source,
+    googleEventId: row.google_event_id ?? undefined,
   };
 }
 
@@ -81,6 +86,8 @@ export function eventToRowPatch(
   if (patch.description !== undefined) row.description = patch.description || null;
   if (patch.repeat !== undefined) row.repeat = patch.repeat;
   if (patch.customRecurrence !== undefined) row.custom_recurrence = patch.customRecurrence ?? null;
+  if (patch.source !== undefined) row.source = patch.source;
+  if (patch.googleEventId !== undefined) row.google_event_id = patch.googleEventId ?? null;
   return row;
 }
 

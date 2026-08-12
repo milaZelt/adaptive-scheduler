@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import type { PlacementReason, ScheduledSession } from "@/lib/calendar/types";
-import { fmtHour } from "@/lib/calendar/dateUtils";
+import { fmtHour, parseLocalDate } from "@/lib/calendar/dateUtils";
 import { useAppState } from "../state/AppStateContext";
 import Modal from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
@@ -46,7 +46,7 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
 
   const category = getCategory(session.categoryId);
   const task = getFlexibleTaskById(session.taskId);
-  const dateStr = new Date(session.date + "T00:00:00").toLocaleDateString("en-US", {
+  const dateStr = parseLocalDate(session.date).toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
     day: "numeric",

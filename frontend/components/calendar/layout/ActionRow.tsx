@@ -6,7 +6,14 @@ import ContextMenu from "@/components/ui/ContextMenu";
 import styles from "./Sidebar.module.css";
 
 export default function ActionRow() {
-  const { openFixedEventDrawer, openFlexibleEventDrawer, updateSchedule, updatingSchedule } = useAppState();
+  const {
+    openFixedEventDrawer,
+    openFlexibleEventDrawer,
+    updateSchedule,
+    updatingSchedule,
+    importGoogleCalendar,
+    importingGoogleCalendar,
+  } = useAppState();
   const createBtnRef = useRef<HTMLButtonElement>(null);
   const [menuAnchor, setMenuAnchor] = useState<DOMRect | null>(null);
 
@@ -51,6 +58,14 @@ export default function ActionRow() {
         onClick={() => updateSchedule()}
       >
         {updatingSchedule ? "Updating…" : "Update Schedule"} <span>↻</span>
+      </button>
+
+      <button
+        className={`${styles.linkBtn} sans`}
+        disabled={importingGoogleCalendar}
+        onClick={() => importGoogleCalendar()}
+      >
+        {importingGoogleCalendar ? "Importing…" : "Import Google Calendar"} <span>⇩</span>
       </button>
     </div>
   );

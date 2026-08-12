@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEscapeKey } from "./useEscapeKey";
 
 interface FloatingPanelOptions {
   anchorRect: DOMRect;
@@ -57,22 +58,19 @@ export function useFloatingPanel({
     setPosition({ top, left });
   }, [anchorRect, align, width, matchWidth, gap]);
 
+  useEscapeKey(onClose);
+
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) onClose();
     }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
     // Defer so the click that opened the panel doesn't immediately close it.
     const t = setTimeout(() => {
       document.addEventListener("click", onDocClick, true);
-      document.addEventListener("keydown", onKey);
     }, 0);
     return () => {
       clearTimeout(t);
       document.removeEventListener("click", onDocClick, true);
-      document.removeEventListener("keydown", onKey);
     };
   }, [onClose]);
 

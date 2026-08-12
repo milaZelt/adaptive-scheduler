@@ -9,12 +9,12 @@ const faqs = [
   {
     question: "How does it decide where to put my tasks?",
     answer:
-      "A constraint solver does the thinking you'd otherwise do yourself. It evaluates your open time, task durations, priorities, and preferences, then places every task exactly where it fits best, with zero double-booking. The more you use it, the more it learns you: when you actually focus, how long tasks really take, what you keep pushing off. It's not guessing. It's building a model of how you work best, then running your week on it.",
+      "A constraint solver does the thinking you'd otherwise do yourself. Every time you click Update Schedule, it evaluates your open time, task durations, priorities, and deadlines, then places every task exactly where it fits best, with zero double-booking. It's not guessing - it's solving your week like a real optimization problem, fresh, every time you ask it to.",
   },
   {
     question: "Do I lose control over my schedule?",
     answer:
-      "No, you gain it back. Every placement is a suggestion: drag it, resize it, delete it. Nothing moves without you clicking Regenerate. You're still the one deciding. I just remove the exhausting part of deciding from a blank slate every single day.",
+      "No, you gain it back. Nextly places your flexible tasks, but you're never locked into where it puts them: edit or delete the task itself and the next Update Schedule reflects that, or just mark a session Completed or Missed as you go. Nothing moves without you clicking Update Schedule. You're still the one deciding. I just remove the exhausting part of deciding from a blank slate every single day.",
   },
   {
     question: "Is my data private?",

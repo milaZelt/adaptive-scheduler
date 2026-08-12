@@ -19,6 +19,7 @@ a constraint before the next stage's objective is applied. A lower stage can
 never influence a higher stage's outcome, even indirectly.
 """
 
+import logging
 from dataclasses import dataclass
 
 from ortools.sat.python import cp_model
@@ -34,6 +35,8 @@ from .constants import (
 )
 from .types import BusyInterval, FlexibleTaskInput, SessionPlacement, SolveResult, TaskResult
 
+logger = logging.getLogger(__name__)
+
 STAGE_TIME_LIMIT_S = 10.0
 
 
@@ -45,7 +48,7 @@ class _Candidate:
 
     def __init__(self, task: FlexibleTaskInput, index: int, model: cp_model.CpModel):
         self.index = index
-        name = f"{task.id}_{index}"
+        self.name = name = f"{task.id}_{index}"
 
         if task.splittable:
             lo, hi = task.min_session_minutes, task.max_session_minutes
@@ -141,7 +144,7 @@ def _solve_and_lock(
     if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
         raise RuntimeError(f"solver stage found no solution (status={solver.StatusName(status)})")
     if status == cp_model.FEASIBLE:
-        print(f"solver stage settled for FEASIBLE, not proven OPTIMAL, within {STAGE_TIME_LIMIT_S}s")
+        logger.info("solver stage settled for FEASIBLE, not proven OPTIMAL, within %ss", STAGE_TIME_LIMIT_S)
     value = round(solver.ObjectiveValue())
     model.Add(expr == value)
     return solver
@@ -192,11 +195,12 @@ def _add_flex_vs_fixed_constraints(
     Google intervals are never checked against each other - only against
     flexible candidates."""
     for c in all_candidates:
-        for busy in busy_intervals:
+        for i, busy in enumerate(busy_intervals):
             busy_start = busy.day * MINUTES_PER_DAY + round(busy.start_hour * 60)
             busy_end = busy.day * MINUTES_PER_DAY + round(busy.end_hour * 60)
-            before = model.NewBoolVar("before")
-            after = model.NewBoolVar("after")
+            name = f"{c.name}_{i}"
+            before = model.NewBoolVar(f"before_{name}")
+            after = model.NewBoolVar(f"after_{name}")
             model.Add(c.abs_end <= busy_start - PADDING_MIN).OnlyEnforceIf([c.presence, before])
             model.Add(c.abs_start >= busy_end + PADDING_MIN).OnlyEnforceIf([c.presence, after])
             model.AddBoolOr([before, after]).OnlyEnforceIf(c.presence)

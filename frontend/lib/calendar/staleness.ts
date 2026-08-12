@@ -1,6 +1,6 @@
 import type { CalendarEvent, FlexibleTask, ScheduledSession } from "./types";
 import { eventOccursOnDate } from "./recurrence";
-import { toISODate } from "./dateUtils";
+import { parseLocalDate, toISODate } from "./dateUtils";
 
 export interface StalenessResult {
   stale: boolean;
@@ -50,7 +50,7 @@ export function computeStaleness(params: {
   const upcomingSessions = scheduledSessions.filter((s) => s.date >= todayISO);
   let conflictCount = 0;
   for (const session of upcomingSessions) {
-    const sessionDate = new Date(session.date + "T00:00:00");
+    const sessionDate = parseLocalDate(session.date);
     const conflicts = events.some((event) => {
       if (!eventOccursOnDate(event, sessionDate)) return false;
       if (event.allDay) return true;

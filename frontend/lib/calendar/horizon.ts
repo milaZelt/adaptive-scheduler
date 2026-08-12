@@ -1,5 +1,5 @@
 import { PLANNING_HORIZON_DAYS } from "./constants";
-import { addDays, toISODate } from "./dateUtils";
+import { addDays, parseLocalDate, toISODate } from "./dateUtils";
 
 export interface PlanningHorizon {
   today: Date;
@@ -39,9 +39,23 @@ export function getPlanningHorizon(today: Date): PlanningHorizon {
  * migration 0003.
  */
 export function dayOffsetInHorizon(horizon: PlanningHorizon, dateISO: string): number {
-  const target = new Date(dateISO + "T00:00:00");
+  const target = parseLocalDate(dateISO);
   const start = horizon.days[0];
   const utcTarget = Date.UTC(target.getFullYear(), target.getMonth(), target.getDate());
   const utcStart = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate());
   return Math.round((utcTarget - utcStart) / (24 * 60 * 60 * 1000));
+}
+
+/**
+ * Pulls `today` (the client's resolved local date - see the module comment
+ * above) out of a parsed request body. Shared by every Route Handler that
+ * needs it, each of which wraps this in its own JSON-parsing try/catch and
+ * builds its own typed error response, since those differ per route.
+ * Returns null for anything malformed rather than throwing.
+ */
+export function parseRequestToday(body: unknown): Date | null {
+  const today = (body as { today?: unknown })?.today;
+  if (typeof today !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(today)) return null;
+  const todayDate = parseLocalDate(today);
+  return isNaN(todayDate.getTime()) ? null : todayDate;
 }

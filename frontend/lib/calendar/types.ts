@@ -6,6 +6,9 @@ export interface Category {
 }
 
 export type EventType = "fixed" | "flexible";
+/** 'google' events are read-only imported copies (Ticket 8) - replaced
+ *  wholesale on each import, never edited in place. */
+export type EventSource = "local" | "google";
 export type RepeatOption =
   | "none"
   | "daily"
@@ -43,6 +46,10 @@ export interface CalendarEvent {
   description?: string;
   repeat?: RepeatOption;
   customRecurrence?: CustomRecurrence;
+  source: EventSource;
+  /** Only set when source === 'google' - the originating Google event id,
+   *  used to de-dup across repeat imports. */
+  googleEventId?: string;
 }
 
 /** Shape logged to console on tear-sheet Save (no backend submit yet). */
@@ -142,4 +149,14 @@ export type UpdateScheduleResponse =
       scheduledSessions: ScheduledSession[];
       lastRunAt: string; // ISO timestamp - schedule_runs.updated_at as of this same transaction.
     }
+  | { status: "error"; message: string };
+
+/** POST /api/import-google-calendar response. "not_connected" is distinct
+ *  from "error" - it means the request succeeded but this user has no
+ *  usable Google credentials (never connected, or their refresh token was
+ *  revoked), which the UI should offer to fix by signing in again rather
+ *  than treating as a generic failure to retry. */
+export type ImportGoogleCalendarResponse =
+  | { status: "ok"; events: CalendarEvent[] }
+  | { status: "not_connected" }
   | { status: "error"; message: string };

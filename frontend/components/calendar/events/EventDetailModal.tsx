@@ -3,7 +3,7 @@
 import React from "react";
 import type { CalendarEvent } from "@/lib/calendar/types";
 import { useAppState } from "../state/AppStateContext";
-import { fmtHour } from "@/lib/calendar/dateUtils";
+import { fmtHour, parseLocalDate } from "@/lib/calendar/dateUtils";
 import Modal from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
 import styles from "./EventDetail.module.css";
@@ -17,12 +17,13 @@ export default function EventDetailModal({ event, onClose }: EventDetailModalPro
   const { getCategory, openFixedEventDrawer, showConfirmDialog, showToast, deleteEvent } =
     useAppState();
 
+  const isGoogleEvent = event.source === "google";
   const category = getCategory(event.categoryId);
   const timeStr =
     event.allDay || event.start === null || event.end === null
       ? "All day"
       : `${fmtHour(event.start)} – ${fmtHour(event.end)}`;
-  const dateStr = new Date(event.date + "T00:00:00").toLocaleDateString("en-US", {
+  const dateStr = parseLocalDate(event.date).toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
     day: "numeric",
@@ -60,14 +61,24 @@ export default function EventDetailModal({ event, onClose }: EventDetailModalPro
       <div className={`${styles.desc} ${event.description ? "" : styles.empty}`}>
         {event.description ? event.description : "No description added."}
       </div>
-      <div className={styles.actions}>
-        <Button variant="plain" onClick={handleDelete}>
-          Delete
-        </Button>
-        <Button variant="primary" onClick={handleEdit}>
-          Edit
-        </Button>
-      </div>
+      {isGoogleEvent ? (
+        <div className={styles.whySection}>
+          <div className={styles.whyLabel}>Imported</div>
+          <p className={styles.whyText}>
+            This event comes from Google Calendar and can&rsquo;t be edited here — it refreshes the next
+            time you import.
+          </p>
+        </div>
+      ) : (
+        <div className={styles.actions}>
+          <Button variant="plain" onClick={handleDelete}>
+            Delete
+          </Button>
+          <Button variant="primary" onClick={handleEdit}>
+            Edit
+          </Button>
+        </div>
+      )}
     </Modal>
   );
 }

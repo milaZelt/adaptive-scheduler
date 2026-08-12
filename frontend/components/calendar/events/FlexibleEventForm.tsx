@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import type { FlexibleTask, Priority } from "@/lib/calendar/types";
 import { useAppState } from "../state/AppStateContext";
-import { addDays, toISODate } from "@/lib/calendar/dateUtils";
+import { addDays, parseLocalDate, toISODate } from "@/lib/calendar/dateUtils";
 import { PLANNING_HORIZON_DAYS } from "@/lib/calendar/constants";
 import Drawer from "./Drawer";
 import Button from "@/components/ui/Button";
@@ -38,6 +38,19 @@ function decimalToHM(decimal: number): { h: string; m: string } {
 
 function hmToDecimal(h: string, m: string): number {
   return (h === "" ? 0 : Number(h)) + (m === "" ? 0 : Number(m)) / 60;
+}
+
+/** Hours/minutes form state for one duration field, seeded from a possibly-
+ *  absent prefill decimal. Estimate/min-session/max-session all need
+ *  exactly this same pair of useState calls - a hook rather than three
+ *  near-identical inline blocks. */
+function useDurationField(
+  initialDecimal: number | null | undefined,
+): [string, string, (v: string) => void, (v: string) => void] {
+  const initial = initialDecimal != null ? decimalToHM(initialDecimal) : { h: "", m: "0" };
+  const [hours, setHours] = useState(initial.h);
+  const [minutes, setMinutes] = useState(initial.m);
+  return [hours, minutes, setHours, setMinutes];
 }
 
 interface DurationFieldProps {
@@ -88,19 +101,12 @@ export default function FlexibleEventForm({ prefill, onClose }: FlexibleEventFor
   const [title, setTitle] = useState(prefill?.title ?? "");
   const [deadline, setDeadline] = useState(prefill?.deadline ?? "");
 
-  const initialEstimate = prefill?.estimateHours != null ? decimalToHM(prefill.estimateHours) : { h: "", m: "0" };
-  const [estHours, setEstHours] = useState(initialEstimate.h);
-  const [estMinutes, setEstMinutes] = useState(initialEstimate.m);
+  const [estHours, estMinutes, setEstHours, setEstMinutes] = useDurationField(prefill?.estimateHours);
 
   const [splitOk, setSplitOk] = useState(prefill?.splitOk ?? false);
 
-  const initialMin = prefill?.sessionMin != null ? decimalToHM(prefill.sessionMin) : { h: "", m: "0" };
-  const [minHours, setMinHours] = useState(initialMin.h);
-  const [minMinutes, setMinMinutes] = useState(initialMin.m);
-
-  const initialMax = prefill?.sessionMax != null ? decimalToHM(prefill.sessionMax) : { h: "", m: "0" };
-  const [maxHours, setMaxHours] = useState(initialMax.h);
-  const [maxMinutes, setMaxMinutes] = useState(initialMax.m);
+  const [minHours, minMinutes, setMinHours, setMinMinutes] = useDurationField(prefill?.sessionMin);
+  const [maxHours, maxMinutes, setMaxHours, setMaxMinutes] = useDurationField(prefill?.sessionMax);
 
   const [description, setDescription] = useState(prefill?.description ?? "");
   const [priority, setPriority] = useState<Priority | "">(prefill?.priority ?? "");
@@ -116,7 +122,7 @@ export default function FlexibleEventForm({ prefill, onClose }: FlexibleEventFor
   const horizonEndISO = toISODate(horizonEndDate);
   const horizonEndLabel = horizonEndDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
-  const parsedDeadline = deadline ? new Date(deadline + "T00:00:00") : null;
+  const parsedDeadline = deadline ? parseLocalDate(deadline) : null;
   const isOutOfWindow = Boolean(
     parsedDeadline && !isNaN(parsedDeadline.getTime()) && toISODate(parsedDeadline) > horizonEndISO,
   );

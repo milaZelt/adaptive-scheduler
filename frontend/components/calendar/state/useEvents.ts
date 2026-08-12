@@ -22,6 +22,10 @@ export interface UseEventsResult {
   /** Cascades a category delete — removes every event tied to that category
    *  from local state (the DB relationship is ON DELETE CASCADE already). */
   removeEventsByCategory: (categoryId: string) => void;
+  /** Replaces the full events list - used by useGoogleImport to merge in
+   *  the fresh state a successful import returns, same pattern as
+   *  useUpdateSchedule's setFlexibleTasks/setScheduledSessions. */
+  setEvents: (events: CalendarEvent[]) => void;
 }
 
 export function useEvents(
@@ -29,7 +33,7 @@ export function useEvents(
   onError: (message: string) => void,
 ): UseEventsResult {
   const [supabase] = useState(() => createClient());
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [events, setEventsState] = useState<CalendarEvent[]>([]);
   const [eventsLoading, setEventsLoading] = useState(true);
   const [eventsError, setEventsError] = useState<string | null>(null);
 
@@ -50,7 +54,7 @@ export function useEvents(
         return;
       }
 
-      setEvents(((data ?? []) as EventRow[]).map(eventFromRow));
+      setEventsState(((data ?? []) as EventRow[]).map(eventFromRow));
       setEventsLoading(false);
     }
 
@@ -93,7 +97,7 @@ export function useEvents(
       }
 
       const created = eventFromRow(data as EventRow);
-      setEvents((cur) => [...cur, created]);
+      setEventsState((cur) => [...cur, created]);
       return created;
     },
     [supabase, userId, onError],
@@ -102,13 +106,13 @@ export function useEvents(
   const updateEvent = useCallback(
     async (id: string, patch: Partial<CalendarEvent>): Promise<boolean> => {
       const prev = events;
-      setEvents((cur) => cur.map((e) => (e.id === id ? { ...e, ...patch } : e)));
+      setEventsState((cur) => cur.map((e) => (e.id === id ? { ...e, ...patch } : e)));
 
       const rowPatch = eventToRowPatch(patch);
       const { error } = await supabase.from("events").update(rowPatch).eq("id", id);
 
       if (error) {
-        setEvents(prev);
+        setEventsState(prev);
         onError("Couldn't save your changes. Please try again.");
         return false;
       }
@@ -120,12 +124,12 @@ export function useEvents(
   const deleteEvent = useCallback(
     async (id: string): Promise<boolean> => {
       const prev = events;
-      setEvents((cur) => cur.filter((e) => e.id !== id));
+      setEventsState((cur) => cur.filter((e) => e.id !== id));
 
       const { error } = await supabase.from("events").delete().eq("id", id);
 
       if (error) {
-        setEvents(prev);
+        setEventsState(prev);
         onError("Couldn't delete that event. Please try again.");
         return false;
       }
@@ -135,7 +139,11 @@ export function useEvents(
   );
 
   const removeEventsByCategory = useCallback((categoryId: string) => {
-    setEvents((cur) => cur.filter((e) => e.categoryId !== categoryId));
+    setEventsState((cur) => cur.filter((e) => e.categoryId !== categoryId));
+  }, []);
+
+  const setEvents = useCallback((next: CalendarEvent[]) => {
+    setEventsState(next);
   }, []);
 
   return {
@@ -148,5 +156,6 @@ export function useEvents(
     updateEvent,
     deleteEvent,
     removeEventsByCategory,
+    setEvents,
   };
 }

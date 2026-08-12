@@ -1,6 +1,6 @@
 import type { CalendarEvent, CustomRecurrence, RepeatOption } from "./types";
 import { DOW_LONG, MONTH_SHORT } from "./constants";
-import { toISODate } from "./dateUtils";
+import { parseLocalDate, toISODate } from "./dateUtils";
 
 function ordinal(n: number): string {
   const suffixes = ["th", "st", "nd", "rd"];
@@ -41,7 +41,7 @@ export function repeatOptionLabel(
 }
 
 function formatShortDate(iso: string): string {
-  const d = new Date(iso + "T00:00:00");
+  const d = parseLocalDate(iso);
   if (isNaN(d.getTime())) return iso;
   return `${MONTH_SHORT[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
 }
@@ -71,17 +71,13 @@ export function isValidCustomRecurrence(rule: CustomRecurrence): boolean {
   if (!Number.isFinite(rule.interval) || rule.interval < 1) return false;
   if (rule.unit === "week" && rule.daysOfWeek.length === 0) return false;
   if (rule.endType === "on") {
-    const d = new Date(rule.endDate + "T00:00:00");
+    const d = parseLocalDate(rule.endDate);
     if (!rule.endDate || isNaN(d.getTime())) return false;
   }
   if (rule.endType === "after" && (!Number.isFinite(rule.endCount) || rule.endCount < 1)) {
     return false;
   }
   return true;
-}
-
-function parseISODate(iso: string): Date {
-  return new Date(iso + "T00:00:00");
 }
 
 function daysBetween(a: Date, b: Date): number {
@@ -160,7 +156,7 @@ function countCustomOccurrencesUpTo(rule: CustomRecurrence, anchor: Date, target
  * on the whole series — there's no per-occurrence override/exception model.
  */
 export function eventOccursOnDate(event: CalendarEvent, date: Date): boolean {
-  const anchor = parseISODate(event.date);
+  const anchor = parseLocalDate(event.date);
   if (isNaN(anchor.getTime())) return false;
 
   const repeat = event.repeat ?? "none";
@@ -188,7 +184,7 @@ export function eventOccursOnDate(event: CalendarEvent, date: Date): boolean {
       if (!rule) return false;
       if (!matchesCustomRuleOnDate(rule, anchor, date)) return false;
       if (rule.endType === "on" && rule.endDate) {
-        const end = parseISODate(rule.endDate);
+        const end = parseLocalDate(rule.endDate);
         if (!isNaN(end.getTime()) && daysBetween(end, date) > 0) return false;
       } else if (rule.endType === "after" && rule.endCount) {
         const occurrenceNumber = countCustomOccurrencesUpTo(rule, anchor, date);

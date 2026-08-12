@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server";
-import type { SupabaseClient, User } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatedUser } from "@/lib/supabase/routeAuth";
 import { PLANNING_HORIZON_DAYS } from "@/lib/calendar/constants";
-import { dayOffsetInHorizon, getPlanningHorizon, type PlanningHorizon } from "@/lib/calendar/horizon";
+import {
+  dayOffsetInHorizon,
+  getPlanningHorizon,
+  parseRequestToday,
+  type PlanningHorizon,
+} from "@/lib/calendar/horizon";
 import { eventOccursOnDate } from "@/lib/calendar/recurrence";
 import {
   eventFromRow,
@@ -82,26 +88,9 @@ async function parseToday(request: Request): Promise<NextResponse | Date> {
     return errorResponse("Malformed request body.", 400);
   }
 
-  // "today" is the client's own resolved local date (AppStateContext.today,
-  // already computed from the user's real browser clock) - this route never
-  // computes its own server-side "now" (decisions record: no server/solver
-  // ever infers a timezone).
-  const today = (body as { today?: unknown })?.today;
-  if (typeof today !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(today)) {
-    return errorResponse("Missing or malformed 'today'.", 400);
-  }
-  const todayDate = new Date(today + "T00:00:00");
-  if (isNaN(todayDate.getTime())) {
-    return errorResponse("Missing or malformed 'today'.", 400);
-  }
+  const todayDate = parseRequestToday(body);
+  if (!todayDate) return errorResponse("Missing or malformed 'today'.", 400);
   return todayDate;
-}
-
-async function getAuthenticatedUser(supabase: SupabaseClient): Promise<NextResponse | User> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user ?? errorResponse("Not authenticated.", 401);
 }
 
 /** Non-null return means "stop and return this" - either a DB error, or a
@@ -520,7 +509,7 @@ export async function POST(request: Request) {
 
   const supabase = await createClient();
   const user = await getAuthenticatedUser(supabase);
-  if (user instanceof NextResponse) return user;
+  if (!user) return errorResponse("Not authenticated.", 401);
 
   const horizon = getPlanningHorizon(todayDate);
 

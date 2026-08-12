@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import type { CalendarEvent, RepeatOption } from "@/lib/calendar/types";
 import { useAppState } from "../state/AppStateContext";
-import { toISODate, decimalToTimeInput, timeInputToDecimal } from "@/lib/calendar/dateUtils";
+import { toISODate, decimalToTimeInput, timeInputToDecimal, parseLocalDate } from "@/lib/calendar/dateUtils";
 import {
   defaultCustomRecurrence,
   isValidCustomRecurrence,
@@ -34,7 +34,7 @@ export default function FixedEventForm({ prefill, onClose }: FixedEventFormProps
   const isEdit = !!prefill;
   const [saving, setSaving] = useState(false);
 
-  const initialDate = prefill ? new Date(prefill.date + "T00:00:00") : new Date(currentDate);
+  const initialDate = prefill ? parseLocalDate(prefill.date) : new Date(currentDate);
 
   const [title, setTitle] = useState(prefill?.title ?? "");
   const [date, setDate] = useState(toISODate(initialDate));
@@ -55,7 +55,7 @@ export default function FixedEventForm({ prefill, onClose }: FixedEventFormProps
   const [categoryId, setCategoryId] = useState(prefill?.categoryId ?? categories[0]?.id ?? "");
 
   const dateForLabels = (() => {
-    const d = new Date(date + "T00:00:00");
+    const d = parseLocalDate(date);
     return isNaN(d.getTime()) ? initialDate : d;
   })();
 
@@ -85,6 +85,7 @@ export default function FixedEventForm({ prefill, onClose }: FixedEventFormProps
       description: description.trim() || undefined,
       repeat,
       customRecurrence: repeat === "custom" ? customRecurrence : undefined,
+      source: "local",
     };
 
     const success = isEdit

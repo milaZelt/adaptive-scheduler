@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import type { SessionCompletionStatus, UnresolvedSessionInfo } from "@/lib/calendar/types";
-import { fmtHour } from "@/lib/calendar/dateUtils";
+import { fmtHour, parseLocalDate } from "@/lib/calendar/dateUtils";
 import { useAppState } from "../state/AppStateContext";
 import Modal from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
@@ -17,7 +17,7 @@ interface ResolveSessionsModalProps {
 }
 
 function dateLabel(iso: string): string {
-  const d = new Date(iso + "T00:00:00");
+  const d = parseLocalDate(iso);
   if (isNaN(d.getTime())) return iso;
   return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
 }

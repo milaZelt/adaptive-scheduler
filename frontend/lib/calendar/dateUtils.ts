@@ -7,6 +7,14 @@ export function toISODate(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+/** 'YYYY-MM-DD' -> local midnight Date, the inverse of toISODate(). The
+ *  "T00:00:00" suffix is load-bearing, not decoration - without it, the
+ *  browser parses a bare date string as UTC midnight, which then renders
+ *  as the previous day in any timezone behind UTC. */
+export function parseLocalDate(iso: string): Date {
+  return new Date(iso + "T00:00:00");
+}
+
 export function sameDay(a: Date, b: Date): boolean {
   return (
     a.getFullYear() === b.getFullYear() &&
@@ -29,7 +37,7 @@ export function fmtHour(t: number): string {
  *  very soon" (contrast recurrence.ts's own date formatter, which includes
  *  the year since a recurrence end date can be far in the future). */
 export function fmtShortDate(iso: string): string {
-  const d = new Date(iso + "T00:00:00");
+  const d = parseLocalDate(iso);
   if (isNaN(d.getTime())) return iso;
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }

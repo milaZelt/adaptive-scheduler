@@ -15,6 +15,7 @@ import { useFlexibleTasks, type UseFlexibleTasksResult } from "./useFlexibleTask
 import { useScheduledSessions, type UseScheduledSessionsResult } from "./useScheduledSessions";
 import { useScheduleRuns, type UseScheduleRunsResult } from "./useScheduleRuns";
 import { useUpdateSchedule } from "./useUpdateSchedule";
+import { useGoogleImport } from "./useGoogleImport";
 import { useNote, type UseNoteResult } from "./useNote";
 
 interface AppState
@@ -29,6 +30,8 @@ interface AppState
   resolvePrompt: UnresolvedSessionInfo[] | null;
   closeResolvePrompt: () => void;
   updateSchedule: () => Promise<void>;
+  importingGoogleCalendar: boolean;
+  importGoogleCalendar: () => Promise<void>;
   currentDate: Date;
   currentView: ViewType;
   setView: (v: ViewType) => void;
@@ -127,6 +130,13 @@ export function AppStateProvider({
     setFlexibleTasks: flexibleTasksApi.setFlexibleTasks,
     setScheduledSessions: scheduledSessionsApi.setScheduledSessions,
     setLastRunAt: scheduleRunsApi.setLastRunAt,
+    showToast,
+    reportSystemError,
+  });
+
+  const { importingGoogleCalendar, importGoogleCalendar } = useGoogleImport({
+    today,
+    setEvents: eventsApi.setEvents,
     showToast,
     reportSystemError,
   });
@@ -236,6 +246,8 @@ export function AppStateProvider({
     resolvePrompt,
     closeResolvePrompt,
     updateSchedule,
+    importingGoogleCalendar,
+    importGoogleCalendar,
     currentDate,
     currentView,
     setView,
