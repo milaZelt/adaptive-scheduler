@@ -1,0 +1,106 @@
+[
+  {
+    "task_count": 5,
+    "not_converged": 0,
+    "repeats": 1,
+    "mean_s": 0.129,
+    "median_s": 0.129,
+    "p95_s": 0.129,
+    "max_s": 0.129,
+    "slowest_stages": [
+      {
+        "priority": "High",
+        "stage": "earliest_placement",
+        "mean_s": 0.013
+      },
+      {
+        "priority": "Medium",
+        "stage": "earliest_placement",
+        "mean_s": 0.013
+      },
+      {
+        "priority": "High",
+        "stage": "count",
+        "mean_s": 0.012
+      }
+    ]
+  },
+  {
+    "task_count": 10,
+    "not_converged": 0,
+    "repeats": 1,
+    "mean_s": 9.296,
+    "median_s": 9.296,
+    "p95_s": 9.296,
+    "max_s": 9.296,
+    "slowest_stages": [
+      {
+        "priority": "High",
+        "stage": "earliest_placement",
+        "mean_s": 3.001
+      },
+      {
+        "priority": "Medium",
+        "stage": "earliest_placement",
+        "mean_s": 3.001
+      },
+      {
+        "priority": "Low",
+        "stage": "earliest_placement",
+        "mean_s": 3.001
+      }
+    ]
+  },
+  {
+    "task_count": 15,
+    "not_converged": 0,
+    "repeats": 1,
+    "mean_s": 9.815,
+    "median_s": 9.815,
+    "p95_s": 9.815,
+    "max_s": 9.815,
+    "slowest_stages": [
+      {
+        "priority": "High",
+        "stage": "earliest_placement",
+        "mean_s": 3.001
+      },
+      {
+        "priority": "Medium",
+        "stage": "earliest_placement",
+        "mean_s": 3.001
+      },
+      {
+        "priority": "Low",
+        "stage": "earliest_placement",
+        "mean_s": 3.001
+      }
+    ]
+  },
+  {
+    "task_count": 20,
+    "not_converged": 1,
+    "repeats": 1,
+    "mean_s": 9.896,
+    "median_s": 9.896,
+    "p95_s": 9.896,
+    "max_s": 9.896,
+    "slowest_stages": [
+      {
+        "priority": "Medium",
+        "stage": "earliest_placement",
+        "mean_s": 3.002
+      },
+      {
+        "priority": "High",
+        "stage": "earliest_placement",
+        "mean_s": 3.001
+      },
+      {
+        "priority": "High",
+        "stage": "fewer_sessions",
+        "mean_s": 0.432
+      }
+    ]
+  }
+]

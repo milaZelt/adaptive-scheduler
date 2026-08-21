@@ -10,7 +10,7 @@ interface ColorPickerProps {
   onChange: (color: string) => void;
 }
 
-/** Swatch grid + custom hex input. Purely controlled — parent owns the selected value. */
+/** Swatch grid + custom hex input. Purely controlled - parent owns the selected value. */
 export default function ColorPicker({ initialColor, onChange }: ColorPickerProps) {
   const [selected, setSelected] = useState(initialColor);
   const [hexValue, setHexValue] = useState(initialColor);

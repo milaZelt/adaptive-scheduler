@@ -1,12 +1,10 @@
-"""Global scheduling constants. These are fixed, non-user-configurable rules
-(decisions record: 8AM-11PM window and 30-min break are global, not settings).
-"""
+"""Global scheduling constants - fixed rules, not user-configurable settings."""
 
 MINUTES_PER_DAY = 24 * 60
 
-# Solver's own scheduling window - distinct from the calendar grid's display
-# range (frontend START_HOUR/END_HOUR = 6-23). These coincidentally share an
-# endpoint but are unrelated concerns; do not couple them.
+# Solver's own scheduling window - separate from the calendar grid's display
+# range (frontend START_HOUR/END_HOUR = 6-23). They share an endpoint by
+# coincidence only; don't link them.
 WINDOW_START_MIN = 8 * 60  # 8:00 AM
 WINDOW_END_MIN = 23 * 60  # 11:00 PM
 

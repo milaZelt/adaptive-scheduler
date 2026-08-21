@@ -13,12 +13,12 @@ interface SessionDetailModalProps {
   onClose: () => void;
 }
 
-/** Templated from the structured facts captured at solve time (Ticket 4) -
- *  not reconstructed after the fact, since "why" is a claim about calendar
- *  state at the moment of solving. Deliberately only states what
- *  placementReason actually carries (priority-tier composition, calendar
- *  adjacency, split position) rather than a claim about the solver's
- *  internal search that a single result can't honestly support. */
+/** Templated from the structured facts captured at solve time, not
+ *  reconstructed after the fact, since "why" describes calendar state at
+ *  the moment of solving. Only states what placementReason actually
+ *  carries (priority-tier composition, calendar adjacency, split
+ *  position), not a claim about the solver's internal search that a
+ *  single result can't honestly support. */
 function explainPlacement(reason: PlacementReason): string {
   const priorityClause =
     reason.otherTierTasksCount === 0
@@ -35,10 +35,10 @@ function explainPlacement(reason: PlacementReason): string {
   return `${priorityClause}, so it was scheduled as soon as possible.${splitSuffix}`;
 }
 
-/** A scheduled session's only sanctioned direct interactions (decisions
- *  record): toggle Completed/Missed, or jump to the underlying flexible
- *  task to change what the next Update Schedule produces. No edit/delete/
- *  drag on the placement itself. */
+/** A scheduled session's only allowed direct interactions: toggle
+ *  Completed/Missed, or jump to the underlying flexible task to change
+ *  what the next Update Schedule produces. No edit, delete, or drag on
+ *  the placement itself. */
 export default function SessionDetailModal({ session, onClose }: SessionDetailModalProps) {
   const { getCategory, getFlexibleTaskById, openFlexibleEventDrawer, markSessionCompletion } =
     useAppState();

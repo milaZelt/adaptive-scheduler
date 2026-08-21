@@ -15,12 +15,12 @@ const EVENTS_LIST_URL = "https://www.googleapis.com/calendar/v3/calendars/primar
 const PAGE_SIZE = 250;
 
 /** Fetches every event Google returns for the [timeMinISO, timeMaxISO)
- *  window on the user's primary calendar, following pagination to
- *  completion - a personal calendar's ~2-week import window is never going
- *  to need more than one page in practice, but silently truncating on that
- *  assumption is worse than the few extra lines pagination takes.
- *  singleEvents=true asks Google to expand recurring events into
- *  individual instances itself, rather than this app parsing RRULEs. */
+ *  window on the user's primary calendar, following pagination to the
+ *  end. A ~2-week import window will likely never need more than one
+ *  page, but silently truncating on that guess is worse than the few
+ *  extra lines pagination takes. singleEvents=true asks Google to expand
+ *  recurring events into individual instances itself, instead of this app
+ *  parsing RRULEs. */
 export async function fetchGoogleCalendarEvents(
   accessToken: string,
   timeMinISO: string,

@@ -19,7 +19,7 @@ export interface UseFlexibleTasksResult {
   ) => Promise<FlexibleTask | null>;
   updateFlexibleTask: (id: string, patch: Partial<FlexibleTask>) => Promise<boolean>;
   deleteFlexibleTask: (id: string) => Promise<boolean>;
-  /** Cascades a category delete — removes every task tied to that category
+  /** Cascades a category delete - removes every task tied to that category
    *  from local state (the DB relationship is ON DELETE CASCADE already). */
   removeFlexibleTasksByCategory: (categoryId: string) => void;
   /** Replaces local state wholesale - used right after a successful Update

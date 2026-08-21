@@ -12,15 +12,14 @@ interface StoredCredentialsRow {
 }
 
 /** Captures the Google refresh token at sign-in time (auth/callback) - the
- *  only moment Supabase's session ever carries it, so it has to be
- *  persisted now or it's gone for good. Deliberately does not store the
- *  short-lived access token issued alongside it: Supabase's Session type
- *  doesn't expose that token's real expiry (expires_in/expires_at on the
- *  session describe Supabase's own JWT, not Google's), so caching it here
- *  would mean guessing a TTL. Leaving access_token unset instead makes the
- *  next getValidGoogleAccessToken call refresh for real on first use,
- *  which is always correct. On a re-login (existing row), an already-cached
- *  access token is left untouched rather than wiped, since upsert only
+ *  only moment Supabase's session carries it, so it must be saved now or
+ *  it's gone for good. Doesn't store the short-lived access token issued
+ *  alongside it: Supabase's session doesn't expose that token's real
+ *  expiry (expires_in/expires_at describe Supabase's own JWT, not
+ *  Google's), so caching it here would mean guessing a TTL. Leaving
+ *  access_token unset means the next getValidGoogleAccessToken call just
+ *  refreshes for real, which is always correct. On a re-login, an
+ *  already-cached access token is left untouched, since upsert only
  *  overwrites the columns listed here. */
 export async function saveGoogleCredentials(
   supabase: SupabaseClient,
@@ -35,13 +34,13 @@ export async function saveGoogleCredentials(
   if (error) throw error;
 }
 
-/** Returns a Google Calendar access token ready for immediate use,
- *  refreshing against Google's token endpoint first if the cached one is
- *  missing or close to expiry. Supabase only ever refreshes its own
- *  session JWT, never the provider's token - this is that missing piece.
- *  Returns null if this user never connected a Google account, or if
- *  Google rejects the refresh token outright (revoked/expired); either way
- *  the caller's real move is prompting reconnection, not retrying. */
+/** Returns a Google Calendar access token ready to use, refreshing it
+ *  against Google's token endpoint first if the cached one is missing or
+ *  close to expiry. Supabase only ever refreshes its own session JWT,
+ *  never the provider's token - this fills that gap. Returns null if this
+ *  user never connected a Google account, or if Google rejects the
+ *  refresh token (revoked or expired). Either way, the caller should
+ *  prompt reconnection, not retry. */
 export async function getValidGoogleAccessToken(
   supabase: SupabaseClient,
   userId: string,

@@ -1,10 +1,10 @@
 """Stateless FastAPI wrapper around solver.engine.solve(). Holds zero
-Supabase credentials and no database access of any kind (decisions record:
-Next.js gathers all input server-side, POSTs it here, and is solely
-responsible for persisting the result). Only ever reachable from Next.js's
-own server-side Route Handler, never a browser directly - so no CORS
-middleware is configured on purpose; adding permissive CORS here would
-weaken that trust boundary.
+Supabase credentials and no database access of any kind - Next.js gathers
+all input server-side, POSTs it here, and is solely responsible for
+persisting the result. Only ever reachable from Next.js's own server-side
+Route Handler, never a browser directly - so no CORS middleware is
+configured on purpose. Adding permissive CORS here would weaken that trust
+boundary.
 """
 
 from dotenv import load_dotenv

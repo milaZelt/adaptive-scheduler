@@ -133,7 +133,7 @@ function matchesCustomRuleOnDate(rule: CustomRecurrence, anchor: Date, date: Dat
 }
 
 // Safety cap on how far back we'll walk day-by-day to count "after N
-// occurrences" custom recurrences — plenty for a personal scheduler, and
+// occurrences" custom recurrences - plenty for a personal scheduler, and
 // keeps a single membership check bounded even for very old anchor dates.
 const MAX_OCCURRENCE_WALK_DAYS = 3660;
 
@@ -150,10 +150,10 @@ function countCustomOccurrencesUpTo(rule: CustomRecurrence, anchor: Date, target
 }
 
 /**
- * Does `event`'s recurrence rule produce an occurrence on `date`? Recurrence
- * is expanded client-side from the single persisted rule rather than
- * materializing a row per occurrence. Editing/deleting a recurring event acts
- * on the whole series — there's no per-occurrence override/exception model.
+ * Does `event`'s recurrence rule produce an occurrence on `date`?
+ * Recurrence is expanded client-side from the single saved rule, not
+ * stored as one row per occurrence. Editing or deleting a recurring event
+ * always acts on the whole series - there's no per-occurrence override.
  */
 export function eventOccursOnDate(event: CalendarEvent, date: Date): boolean {
   const anchor = parseLocalDate(event.date);

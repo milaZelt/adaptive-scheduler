@@ -1,9 +1,8 @@
 """HTTP-facing request/response contracts. Mirrors solver/types.py field for
 field, but stays a separate Pydantic layer on purpose - the solver package
-remains framework-free, and this is where input gets validated as untrusted
-(the same principle the decisions record applies on the Next.js side to
-FastAPI's response applies here in reverse: FastAPI shouldn't blindly trust
-whatever Next.js sends either).
+remains framework-free, and this is where input gets validated as
+untrusted. Just as Next.js treats FastAPI's response as untrusted, FastAPI
+shouldn't blindly trust whatever Next.js sends either.
 """
 
 from typing import Literal

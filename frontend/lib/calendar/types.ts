@@ -4,16 +4,15 @@ export interface Category {
   color: string;
   checked: boolean;
   /** True only for the one reserved category Google Calendar imports land
-   *  in (Ticket 8) - imported events are read-only mirrors of a real Google
-   *  event, so this category is excluded from new event/task creation
-   *  (nothing the user creates locally can actually be "added into" Google)
-   *  and can't be renamed (CategoryRow.tsx). */
+   *  in. Imported events are read-only mirrors of real Google events, so
+   *  this category is excluded from new event/task creation and can't be
+   *  renamed (see CategoryRow.tsx). */
   isGoogleImport: boolean;
 }
 
 export type EventType = "fixed" | "flexible";
-/** 'google' events are read-only imported copies (Ticket 8) - replaced
- *  wholesale on each import, never edited in place. */
+/** 'google' events are read-only imported copies, replaced wholesale on
+ *  each import, never edited in place. */
 export type EventSource = "local" | "google";
 export type RepeatOption =
   | "none"
@@ -29,7 +28,7 @@ export type ViewType = "day" | "week" | "month";
 export type RecurrenceUnit = "day" | "week" | "month" | "year";
 export type RecurrenceEndType = "never" | "on" | "after";
 
-/** Only populated when repeat === "custom" — Google Calendar's "Custom..." pattern. */
+/** Only set when repeat === "custom" (Google Calendar's "Custom..." pattern). */
 export interface CustomRecurrence {
   interval: number;
   unit: RecurrenceUnit;
@@ -78,7 +77,7 @@ export type SchedulingStatus = "not_yet_scheduled" | "scheduled" | "couldnt_fit"
 
 /** A flexible task definition - solver input. Never has a date/time of its
  *  own; once Update Schedule places it, the placement lives as a separate
- *  scheduled_sessions row (Ticket 4), not on this record. */
+ *  scheduled_sessions row, not on this record. */
 export interface FlexibleTask {
   id: string;
   title: string;
@@ -94,21 +93,20 @@ export interface FlexibleTask {
   createdAt: string; // ISO timestamp
   updatedAt: string; // ISO timestamp - equals createdAt at insert time, bumped by the DB
   // trigger on every update (including the status update Update Schedule
-  // itself performs) - the staleness check (Ticket 5) compares this against
-  // schedule_runs.updated_at to tell "changed since the last run" apart from
-  // "just re-confirmed by that same run."
+  // itself performs). The staleness check compares this against
+  // schedule_runs.updated_at to tell "changed since the last run" apart
+  // from "just re-confirmed by that same run."
 }
 
 export type SessionCompletionStatus = "unresolved" | "completed" | "missed";
 
-/** Structured facts captured at solve time - templated into an explanation
- *  at display time (Ticket 6). Captured then because "why" is a claim about
- *  calendar state at the moment of solving, not reconstructable later.
- *  Deliberately limited to what's honestly derivable from the solver's
- *  actual inputs/outputs (tier composition, calendar adjacency) - not a
- *  claim about the solver's internal search (e.g. "beat task X for this
- *  exact slot"), which isn't something a single solve's result data can
- *  truthfully support. */
+/** Structured facts captured at solve time, turned into an explanation
+ *  later at display time. Captured now because "why" describes calendar
+ *  state at the moment of solving, which can't be reconstructed
+ *  afterward. Limited to what the solver's actual inputs/outputs can
+ *  honestly support (tier composition, calendar adjacency) - not a claim
+ *  about its internal search (e.g. "beat task X for this slot"), which the
+ *  result data alone can't prove. */
 export interface PlacementReason {
   priority: Priority;
   deadline: string; // the task's deadline at solve time, ISO 'YYYY-MM-DD'
@@ -137,7 +135,7 @@ export interface ScheduledSession {
 }
 
 /** A past scheduled session the user hasn't answered Completed/Missed for
- *  yet - blocks Update Schedule until resolved (decisions record). */
+ *  yet - blocks Update Schedule until resolved. */
 export interface UnresolvedSessionInfo {
   id: string;
   taskTitle: string;

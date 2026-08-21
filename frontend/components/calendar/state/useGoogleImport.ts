@@ -17,7 +17,7 @@ export interface UseGoogleImportResult {
   importingGoogleCalendar: boolean;
   /** True once a Google Calendar import has succeeded this session - shown
    *  as a persistent Status-area line (StatusList.tsx), not a toast, since
-   *  the toast already disappears before the user necessarily looks over. */
+   *  the toast disappears before the user might even notice it. */
   googleCalendarImported: boolean;
   importGoogleCalendar: () => Promise<void>;
 }

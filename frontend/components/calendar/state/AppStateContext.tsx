@@ -191,7 +191,7 @@ export function AppStateProvider({
   const closeConfirmDialog = useCallback(() => setConfirmDialog(null), []);
 
   // Wrap deleteCategory so it cascades into event/task/session removal (kept
-  // here since it needs all four hooks' setters — none of them should know
+  // here since it needs all four hooks' setters - none of them should know
   // about the others).
   const deleteCategoryCascade = useCallback(
     (id: string): string => {

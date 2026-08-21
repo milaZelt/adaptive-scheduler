@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 export interface UseScheduleRunsResult {
   /** When Update Schedule last completed successfully for this user, or null
    *  if it never has. Written server-side only, by the apply_schedule_update
-   *  RPC (Ticket 4) - this hook only ever reads it. */
+   *  RPC - this hook only ever reads it. */
   lastRunAt: Date | null;
   lastRunAtLoading: boolean;
   lastRunAtError: string | null;

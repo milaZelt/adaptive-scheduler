@@ -17,23 +17,23 @@ export interface UseScheduledSessionsResult {
    *  expand, unlike getEventsForDate) - just a date match plus the same
    *  category-visibility filter events use. */
   getSessionsForDate: (date: Date, categories: Category[]) => ScheduledSession[];
-  /** The only mutation a scheduled session supports directly (decisions
-   *  record: read-only in V1 beyond completion status). */
+  /** The only mutation a scheduled session supports directly - read-only
+   *  beyond completion status. */
   markSessionCompletion: (id: string, status: "completed" | "missed") => Promise<boolean>;
   /** Replaces local state wholesale - used right after a successful Update
    *  Schedule run, whose Route Handler already persisted the fresh rows
    *  server-side and returns them for the client to adopt directly. */
   setScheduledSessions: (sessions: ScheduledSession[]) => void;
-  /** Cascades a category delete — removes every session tied to that
+  /** Cascades a category delete - removes every session tied to that
    *  category from local state (the DB relationship is ON DELETE CASCADE
    *  already, same pattern as events/flexible tasks). */
   removeScheduledSessionsByCategory: (categoryId: string) => void;
-  /** Cascades a flexible task delete — removes that task's own placed
+  /** Cascades a flexible task delete - removes that task's own placed
    *  sessions from local state (ON DELETE CASCADE handles it server-side;
    *  without this, an already-rendered session block for the deleted task
    *  would linger on the grid until the next full reload). */
   removeScheduledSessionsByTask: (taskId: string) => void;
-  /** Cascades a flexible task recategorize — a DB trigger keeps
+  /** Cascades a flexible task recategorize - a DB trigger keeps
    *  scheduled_sessions.category_id (denormalized at solve time) in sync
    *  server-side; this mirrors that for local state so an already-placed
    *  session's color/visibility updates immediately, not just after reload. */

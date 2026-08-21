@@ -1,7 +1,6 @@
-"""Shared-secret gate (decisions record: defense-in-depth on top of this
-service only ever being reachable from Next.js's own server, never a
-browser - not a real auth system, just a check that the caller is who it
-should be).
+"""Shared-secret gate - defense in depth on top of this service only ever
+being reachable from Next.js's own server, never a browser. Not a real
+auth system, just a check that the caller is who it should be.
 
 Reads the expected secret from the environment on every call rather than
 caching it at import time, so tests can freely set/change

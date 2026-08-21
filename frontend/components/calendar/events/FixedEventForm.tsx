@@ -9,6 +9,7 @@ import {
   isValidCustomRecurrence,
   repeatOptionLabel,
 } from "@/lib/calendar/recurrence";
+import { getSelectableCategories } from "@/lib/calendar/categories";
 import Drawer from "./Drawer";
 import CustomRepeatPanel from "./CustomRepeatPanel";
 import Button from "@/components/ui/Button";
@@ -34,10 +35,7 @@ export default function FixedEventForm({ prefill, onClose }: FixedEventFormProps
   const isEdit = !!prefill;
   const [saving, setSaving] = useState(false);
 
-  // Google Calendar's imports are a read-only mirror of real Google events -
-  // nothing created here can actually be "added into" Google, so that
-  // category is never a valid choice for a new (or edited) event.
-  const selectableCategories = categories.filter((c) => !c.isGoogleImport);
+  const selectableCategories = getSelectableCategories(categories);
 
   const initialDate = prefill ? parseLocalDate(prefill.date) : new Date(currentDate);
 

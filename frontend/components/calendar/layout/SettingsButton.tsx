@@ -5,8 +5,8 @@ import Popover from "@/components/ui/Popover";
 import { fmtHour, timeInputToDecimal } from "@/lib/calendar/dateUtils";
 import styles from "./SettingsButton.module.css";
 
-// Display-only for now — these will become editable once the scheduler
-// backend can actually respect them.
+// Display-only for now - these become editable once the scheduler backend
+// can actually respect them.
 const SCHEDULING_SETTINGS = {
   startTime: "08:00",
   endTime: "23:00",

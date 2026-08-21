@@ -1,25 +1,25 @@
 """Core CP-SAT scheduling engine for flexible tasks.
 
-Objective is true lexicographic optimization, staged per priority tier
-(decisions record, round 4) - not a single weighted formula. For each tier
-in turn (High, then Medium, then Low), holding all higher tiers' outcomes
-fixed:
+The objective is lexicographic, not a single weighted formula: tiers are
+solved in strict priority order (High, then Medium, then Low), and each
+tier's outcome is locked in before the next tier is solved. Within one tier:
 
-  1. Maximize the *count* of fully-completed tasks in this tier.
-  2. Among ties, prefer completing the more urgent (earlier-deadline) tasks.
-  3. Among remaining ties, prefer completing shorter tasks (frees more
-     capacity for other completions).
+  1. Maximize the *count* of fully-completed tasks.
+  2. Among ties, prefer the more urgent (earlier-deadline) tasks.
+  3. Among remaining ties, prefer shorter tasks (frees more capacity for
+     other completions).
   4. Among remaining ties, prefer fewer/longer sessions per task over more,
      shorter fragments.
   5. Among remaining ties, prefer the earliest available placement.
 
-Implemented as a sequence of solves on one shared model: each stage sets an
-objective, solves to proven optimality, then locks that optimal value in as
-a constraint before the next stage's objective is applied. A lower stage can
-never influence a higher stage's outcome, even indirectly.
+This runs as a sequence of solves on one shared model: each stage sets an
+objective, solves it to proven optimality, then locks that value in as a
+constraint before the next stage runs. A lower-priority stage can never
+change a higher-priority stage's outcome, even indirectly.
 """
 
 import logging
+import time
 from dataclasses import dataclass
 
 from ortools.sat.python import cp_model
@@ -42,9 +42,9 @@ STAGE_TIME_LIMIT_S = 10.0
 
 class _Candidate:
     """One candidate session slot for a task. A splittable task gets several
-    of these to choose among (0 or more may end up present); a
-    non-splittable task gets exactly one, forced to the task's full
-    remaining duration whenever it's present."""
+    of these to choose from - any number can end up present. A
+    non-splittable task gets exactly one, always its full remaining
+    duration when present."""
 
     def __init__(self, task: FlexibleTaskInput, index: int, model: cp_model.CpModel):
         self.index = index
@@ -58,26 +58,25 @@ class _Candidate:
         self.presence = model.NewBoolVar(f"present_{name}")
         self.day = model.NewIntVar(0, task.deadline_day, f"day_{name}")
         self.duration = model.NewIntVar(lo, hi, f"dur_{name}")
-        # Callers are expected to pass durations already aligned to SNAP_MIN
-        # (matches the frontend's 15-min drag/resize grid) - enforced here so
-        # a non-splittable task's forced duration mismatching would surface
-        # as an explicit infeasibility rather than a silently misaligned time.
+        # Callers must pass durations already aligned to SNAP_MIN (matches
+        # the frontend's 15-min drag/resize grid). Enforced here so a bad
+        # duration fails loudly (infeasible) instead of landing off-grid.
         model.AddModuloEquality(0, self.duration, SNAP_MIN)
 
         # hour_start is minutes-since-midnight on whichever day this lands on.
         self.hour_start = model.NewIntVar(WINDOW_START_MIN, WINDOW_END_MIN, f"hs_{name}")
         model.AddModuloEquality(0, self.hour_start, SNAP_MIN)
-        # Only enforced when present - an unused candidate (e.g. one whose
-        # forced duration can't possibly fit the window) must not make the
-        # whole model infeasible just because it's sitting there unused.
+        # Only enforced when present, so an unused candidate (e.g. one whose
+        # duration can't fit the window) doesn't make the whole model
+        # infeasible just by existing.
         model.Add(self.hour_start + self.duration <= WINDOW_END_MIN).OnlyEnforceIf(self.presence)
 
         horizon_minutes = (task.deadline_day + 1) * MINUTES_PER_DAY
         self.abs_start = model.NewIntVar(0, horizon_minutes, f"abs_start_{name}")
         model.Add(self.abs_start == self.day * MINUTES_PER_DAY + self.hour_start)
-        # Domain must absorb abs_start + duration even for a non-present
-        # candidate whose (unconditional) duration domain is large - the
-        # window constraint above only rules this out when actually present.
+        # Domain must be large enough for abs_start + duration even when
+        # this candidate isn't present - the window constraint above only
+        # applies when it is.
         self.abs_end = model.NewIntVar(0, horizon_minutes + hi, f"abs_end_{name}")
         model.Add(self.abs_end == self.abs_start + self.duration)
 
@@ -85,11 +84,11 @@ class _Candidate:
             self.abs_start, self.duration, self.abs_end, self.presence, f"iv_{name}"
         )
 
-        # Padded shadow interval, expanded PADDING_MIN/2 each side, used only
-        # for the flex-vs-flex AddNoOverlap call below - non-overlap of the
-        # padded shadows guarantees a real gap >= PADDING_MIN between the
-        # actual (unpadded) sessions. Applies uniformly to every pair of
-        # flexible sessions, including two sessions of the same split task.
+        # Padded shadow interval, expanded PADDING_MIN/2 on each side, used
+        # only by the flex-vs-flex AddNoOverlap call below. If the padded
+        # shadows don't overlap, the real sessions have a gap of at least
+        # PADDING_MIN. Applies to every pair of flexible sessions, including
+        # two sessions from the same split task.
         half = PADDING_MIN // 2
         pad_lo = -half
         pad_hi = horizon_minutes + half
@@ -104,8 +103,8 @@ class _Candidate:
         )
 
         # 0 when not present, so summing this across a tier for the stage-5
-        # "earliest placement" tie-break isn't polluted by non-present
-        # candidates' otherwise-unconstrained abs_start values.
+        # tie-break isn't thrown off by unused candidates' otherwise-
+        # unconstrained abs_start values.
         self.effective_start = model.NewIntVar(0, horizon_minutes, f"effstart_{name}")
         model.Add(self.effective_start == self.abs_start).OnlyEnforceIf(self.presence)
         model.Add(self.effective_start == 0).OnlyEnforceIf(self.presence.Not())
@@ -132,15 +131,14 @@ def _solve_and_lock(
     solver.parameters.max_time_in_seconds = STAGE_TIME_LIMIT_S
     status = solver.Solve(model)
     # FEASIBLE means CP-SAT found a valid, usable solution but ran out of
-    # time proving no better one exists - real task counts are far larger
-    # than the fixture tests this time limit was tuned against, so treating
-    # "found a good schedule" the same as "found no schedule at all" would
-    # make Update Schedule fail outright on exactly the inputs it most needs
-    # to handle well. In practice CP-SAT finds strong solutions quickly and
-    # spends most of its remaining budget on the proof step, so a FEASIBLE
-    # result here is very likely already optimal or close to it - and every
-    # later stage still only ever narrows this value further, never behind
-    # it, so a merely-good stage 1 can't make a later stage do worse.
+    # time proving it's the best one. We accept it anyway: real task counts
+    # are much bigger than the fixtures this time limit was tuned on, so
+    # treating "found a good schedule" the same as "found nothing" would
+    # break Update Schedule on exactly the inputs that matter most. CP-SAT
+    # usually finds a strong solution fast and spends the rest of its time
+    # proving optimality, so a FEASIBLE result is normally optimal or close
+    # to it - and later stages only ever narrow this value further, never
+    # worse, so an imperfect stage 1 can't make later stages worse either.
     if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
         raise RuntimeError(f"solver stage found no solution (status={solver.StatusName(status)})")
     if status == cp_model.FEASIBLE:
@@ -158,9 +156,10 @@ class _TaskVars:
 
 
 def _build_task_vars(task: FlexibleTaskInput, model: cp_model.CpModel) -> _TaskVars:
-    """One task's candidate sessions plus its own `scheduled` bool - true iff
-    the candidates present sum to exactly the task's full remaining_minutes,
-    false iff none are present (all-or-nothing, enforced here)."""
+    """One task's candidate sessions, plus its own `scheduled` bool. True if
+    the present candidates add up to exactly the task's full
+    remaining_minutes; false if none are present. All-or-nothing, enforced
+    here."""
     candidates = [_Candidate(task, i, model) for i in range(_num_candidates(task))]
 
     scheduled = model.NewBoolVar(f"scheduled_{task.id}")
@@ -191,9 +190,9 @@ def _add_flex_vs_fixed_constraints(
     all_candidates: list[_Candidate],
     busy_intervals: list[BusyInterval],
 ) -> None:
-    """Padded disjunction against every fixed/Google busy interval. Fixed/
-    Google intervals are never checked against each other - only against
-    flexible candidates."""
+    """Keeps every flexible candidate padded-clear of every fixed/Google
+    busy interval. Fixed/Google intervals are never checked against each
+    other, only against flexible candidates."""
     for c in all_candidates:
         for i, busy in enumerate(busy_intervals):
             busy_start = busy.day * MINUTES_PER_DAY + round(busy.start_hour * 60)
@@ -210,6 +209,7 @@ def solve(
     tasks: list[FlexibleTaskInput],
     busy_intervals: list[BusyInterval],
     horizon_days: int,
+    stage_timings: list[dict] | None = None,
 ) -> SolveResult:
     if not tasks:
         return SolveResult(task_results={}, all_sessions=[])
@@ -223,29 +223,41 @@ def solve(
 
     solver = cp_model.CpSolver()
 
+    # Optional benchmarking hook - records how long each stage took. No-op
+    # when stage_timings is None, so production pays nothing for this.
+    # Defined once; priority is passed in since it's the only thing that
+    # changes per call.
+    def _stage(priority: str, label: str, terms: list, maximize: bool) -> None:
+        start = time.perf_counter()
+        _solve_and_lock(model, solver, terms, maximize=maximize)
+        if stage_timings is not None:
+            stage_timings.append(
+                {"priority": priority, "stage": label, "elapsed_s": time.perf_counter() - start}
+            )
+
     for priority in PRIORITY_ORDER:
         tier = [tv for tv in task_vars.values() if tv.task.priority == priority]
         if not tier:
             continue
 
         # Stage 1: maximize count of completed tasks in this tier.
-        _solve_and_lock(model, solver, [tv.scheduled for tv in tier], maximize=True)
+        _stage(priority, "count", [tv.scheduled for tv in tier], maximize=True)
 
         # Stage 2: among ties, prefer completing more urgent (earlier-deadline) tasks.
         urgency_terms = [(horizon_days - tv.task.deadline_day) * tv.scheduled for tv in tier]
-        _solve_and_lock(model, solver, urgency_terms, maximize=True)
+        _stage(priority, "urgency", urgency_terms, maximize=True)
 
         # Stage 3: among remaining ties, prefer completing shorter tasks.
         minutes_terms = [tv.task.remaining_minutes * tv.scheduled for tv in tier]
-        _solve_and_lock(model, solver, minutes_terms, maximize=False)
+        _stage(priority, "shorter_task", minutes_terms, maximize=False)
 
         # Stage 4: among remaining ties, prefer fewer/longer sessions per task.
         session_count_terms = [c.presence for tv in tier for c in tv.candidates]
-        _solve_and_lock(model, solver, session_count_terms, maximize=False)
+        _stage(priority, "fewer_sessions", session_count_terms, maximize=False)
 
         # Stage 5: among remaining ties, prefer the earliest available placement.
         earliest_terms = [c.effective_start for tv in tier for c in tv.candidates]
-        _solve_and_lock(model, solver, earliest_terms, maximize=False)
+        _stage(priority, "earliest_placement", earliest_terms, maximize=False)
 
     task_results: dict[str, TaskResult] = {}
     all_sessions: list[SessionPlacement] = []

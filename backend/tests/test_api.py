@@ -1,9 +1,8 @@
-"""Tests for the FastAPI wrapper layer (Ticket 3). Ticket 1's test_engine.py
-already thoroughly proves the solver's actual scheduling behavior - these
-tests focus on what's new at the HTTP boundary: auth enforcement, request
-validation, and that the wrapping/serialization round-trip is correct
-(checked against one known scenario from test_engine.py, not re-proving the
-whole algorithm).
+"""Tests for the FastAPI wrapper layer. test_engine.py already thoroughly
+proves the solver's actual scheduling behavior - these tests focus on
+what's new at the HTTP boundary: auth enforcement, request validation, and
+that the wrapping/serialization round-trip is correct (checked against one
+known scenario from test_engine.py, not re-proving the whole algorithm).
 """
 
 import pytest

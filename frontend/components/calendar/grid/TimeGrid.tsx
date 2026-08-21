@@ -31,7 +31,7 @@ export default function TimeGrid({ days }: TimeGridProps) {
   return (
     <div className={styles.gridBodyScroll}>
       <div className={styles.tgGrid} style={{ gridTemplateColumns: colTemplate }}>
-        {/* Row 1 — all-day banners */}
+        {/* Row 1: all-day banners */}
         <div className={styles.tgSpacer} style={{ gridRow: 1, gridColumn: 1 }} />
         {days.map((d, i) => {
           const allDayEvents = getEventsForDate(d, categories).filter((e) => e.allDay);
@@ -48,7 +48,7 @@ export default function TimeGrid({ days }: TimeGridProps) {
           );
         })}
 
-        {/* Row 2 — day headers */}
+        {/* Row 2: day headers */}
         <div className={styles.tgSpacer} style={{ gridRow: 2, gridColumn: 1 }} />
         {days.map((d, i) => {
           const isToday = sameDay(d, today);
@@ -63,7 +63,7 @@ export default function TimeGrid({ days }: TimeGridProps) {
           );
         })}
 
-        {/* Row 3 — time labels + hourly day columns */}
+        {/* Row 3: time labels + hourly day columns */}
         <div
           className={styles.gridTimeCol}
           style={{ gridRow: 3, gridColumn: 1, height: totalHeight }}

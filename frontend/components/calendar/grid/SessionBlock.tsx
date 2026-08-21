@@ -12,8 +12,8 @@ interface SessionBlockProps {
   session: ScheduledSession;
 }
 
-/** Solver-placed - read-only in V1 beyond the Completed/Missed toggle
- *  (decisions record), so unlike EventBlock this wires up no drag/resize. */
+/** Solver-placed - read-only beyond the Completed/Missed toggle, so unlike
+ *  EventBlock this wires up no drag/resize. */
 export default function SessionBlock({ session }: SessionBlockProps) {
   const { getCategory, getFlexibleTaskById, openSessionDetail } = useAppState();
   const category = getCategory(session.categoryId);

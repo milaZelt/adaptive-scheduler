@@ -11,9 +11,9 @@ function estimateLabel(t: FlexibleTask): string {
   return `${t.estimateHours}h`;
 }
 
-/** Each state implies a different next action (decisions record) - couldn't
- *  fit / overdue get a reason line explaining what to do about it instead of
- *  the generic priority/deadline/estimate line the other two states use. */
+/** Each state implies a different next action - couldn't fit / overdue get
+ *  a reason line explaining what to do about it, instead of the generic
+ *  priority/deadline/estimate line the other two states use. */
 function metaLabel(t: FlexibleTask): string {
   switch (t.schedulingStatus) {
     case "couldnt_fit":

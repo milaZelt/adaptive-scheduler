@@ -23,7 +23,7 @@ interface UseUpdateScheduleParams {
 export interface UseUpdateScheduleResult {
   updatingSchedule: boolean;
   /** Non-null while the blocking "what happened with these?" prompt needs
-   *  an answer before Update Schedule can actually run (decisions record). */
+   *  an answer before Update Schedule can actually run. */
   resolvePrompt: UnresolvedSessionInfo[] | null;
   closeResolvePrompt: () => void;
   updateSchedule: () => Promise<void>;
@@ -50,7 +50,7 @@ export function useUpdateSchedule({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         // Client's own resolved local date - the server never infers a
-        // timezone or computes its own "today" (decisions record).
+        // timezone or computes its own "today".
         body: JSON.stringify({ today: toISODate(today) }),
       });
       response = (await res.json()) as UpdateScheduleResponse;

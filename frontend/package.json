@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:unit": "vitest run",
+    "test:e2e": "playwright test",
+    "create-e2e-test-user": "tsx scripts/create-e2e-test-user.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
@@ -16,11 +19,15 @@
     "react-dom": "19.2.8"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^17.4.2",
     "eslint": "^9",
     "eslint-config-next": "16.3.0",
-    "typescript": "^5"
+    "tsx": "^4.19.2",
+    "typescript": "^5",
+    "vitest": "^4.1.10"
   }
 }

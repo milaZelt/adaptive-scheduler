@@ -10,16 +10,15 @@ export interface PlanningHorizon {
 }
 
 /**
- * The rolling planning window, anchored to `today`. Used identically for
- * both the solve-request range and the Update Schedule delete-scope range
- * (decisions record) - one function, not two independently-written date
- * computations that could quietly drift apart at an edge.
+ * The rolling planning window, anchored to `today`. Used for both the
+ * solve-request range and the Update Schedule delete-scope range - one
+ * function, not two separate date computations that could drift apart.
  *
  * `today` must be the caller's own resolved local date - FastAPI never
  * infers a timezone, and neither does this function. The Route Handler
- * that calls this receives `today` as an ISO string from the client (the
+ * that calls this gets `today` as an ISO string from the client (the
  * browser's own `AppStateContext.today`, already resolved from the user's
- * real local clock) rather than ever computing its own server-side "now."
+ * real local clock), never computed server-side.
  */
 export function getPlanningHorizon(today: Date): PlanningHorizon {
   const days = Array.from({ length: PLANNING_HORIZON_DAYS }, (_, i) => addDays(today, i));
@@ -34,9 +33,9 @@ export function getPlanningHorizon(today: Date): PlanningHorizon {
 /**
  * 0-indexed day offset of `dateISO` from the horizon's first day, matching
  * the solver's own day-0-through-day-13 convention. Negative means before
- * the horizon (overdue). Callers should still guard the upper bound rather
- * than assume it - see the comment above `flexible_tasks.deadline` in
- * migration 0003.
+ * the horizon (overdue). Callers should still check the upper bound, not
+ * assume it - see the comment above `flexible_tasks.deadline` in migration
+ * 0003.
  */
 export function dayOffsetInHorizon(horizon: PlanningHorizon, dateISO: string): number {
   const target = parseLocalDate(dateISO);
@@ -47,11 +46,11 @@ export function dayOffsetInHorizon(horizon: PlanningHorizon, dateISO: string): n
 }
 
 /**
- * Pulls `today` (the client's resolved local date - see the module comment
- * above) out of a parsed request body. Shared by every Route Handler that
- * needs it, each of which wraps this in its own JSON-parsing try/catch and
- * builds its own typed error response, since those differ per route.
- * Returns null for anything malformed rather than throwing.
+ * Pulls `today` (the client's resolved local date - see above) out of a
+ * parsed request body. Shared by every Route Handler that needs it; each
+ * one wraps this in its own JSON-parsing try/catch and builds its own
+ * typed error response, since those differ per route. Returns null for
+ * anything malformed instead of throwing.
  */
 export function parseRequestToday(body: unknown): Date | null {
   const today = (body as { today?: unknown })?.today;

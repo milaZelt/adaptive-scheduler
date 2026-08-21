@@ -5,6 +5,7 @@ import type { FlexibleTask, Priority } from "@/lib/calendar/types";
 import { useAppState } from "../state/AppStateContext";
 import { addDays, parseLocalDate, toISODate } from "@/lib/calendar/dateUtils";
 import { PLANNING_HORIZON_DAYS } from "@/lib/calendar/constants";
+import { getSelectableCategories } from "@/lib/calendar/categories";
 import Drawer from "./Drawer";
 import Button from "@/components/ui/Button";
 import Select, { type SelectOption } from "@/components/ui/Select";
@@ -98,10 +99,7 @@ export default function FlexibleEventForm({ prefill, onClose }: FlexibleEventFor
   const isEdit = !!prefill;
   const [saving, setSaving] = useState(false);
 
-  // Google Calendar's imports are a read-only mirror of real Google events -
-  // nothing created here can actually be "added into" Google, so that
-  // category is never a valid choice for a new (or edited) task.
-  const selectableCategories = categories.filter((c) => !c.isGoogleImport);
+  const selectableCategories = getSelectableCategories(categories);
 
   const [title, setTitle] = useState(prefill?.title ?? "");
   const [deadline, setDeadline] = useState(prefill?.deadline ?? "");
@@ -117,11 +115,11 @@ export default function FlexibleEventForm({ prefill, onClose }: FlexibleEventFor
   const [priority, setPriority] = useState<Priority | "">(prefill?.priority ?? "");
   const [categoryId, setCategoryId] = useState(prefill?.categoryId ?? selectableCategories[0]?.id ?? "");
 
-  // Horizon check (decisions record, round 3): a deadline beyond the rolling
-  // planning window isn't tracked long-term. Rather than collect a second,
-  // parallel "near-term" allocation in a shadow panel, the Deadline and Time
-  // Estimate fields below are always what actually gets saved — an
-  // out-of-window date just blocks Save until the user adjusts it.
+  // A deadline beyond the rolling planning window isn't tracked long-term.
+  // Rather than collect a second, parallel "near-term" allocation in a
+  // shadow panel, the Deadline and Time Estimate fields below are always
+  // what actually gets saved - an out-of-window date just blocks Save
+  // until the user adjusts it.
   const todayISO = toISODate(today);
   const horizonEndDate = addDays(today, PLANNING_HORIZON_DAYS - 1);
   const horizonEndISO = toISODate(horizonEndDate);
@@ -158,8 +156,8 @@ export default function FlexibleEventForm({ prefill, onClose }: FlexibleEventFor
       description: description.trim() || undefined,
     };
 
-    // Editing marks the schedule stale (decisions record, round 4) - reset
-    // so a previously-placed task doesn't keep showing a now-outdated status.
+    // Editing marks the schedule stale, so reset the status too - a
+    // previously-placed task shouldn't keep showing a now-outdated one.
     const success = isEdit
       ? await updateFlexibleTask(prefill!.id, { ...payload, schedulingStatus: "not_yet_scheduled" })
       : (await createFlexibleTask(payload)) !== null;

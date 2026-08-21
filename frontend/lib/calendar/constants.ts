@@ -2,10 +2,10 @@ export const START_HOUR = 6;
 export const END_HOUR = 23;
 export const ROW_HEIGHT = 52; // px per hour row in the time grid
 
-// Flat rolling planning horizon for flexible-task scheduling (decisions
-// record, round 3/4) - today counts as day 1 of 14, matching the solver's
-// own day-0-through-day-13 convention. Keep in sync with the `deadline`
-// CHECK constraint in supabase/migrations/0003_flexible_tasks.sql.
+// Flat rolling planning horizon for flexible-task scheduling - today counts
+// as day 1 of 14, matching the solver's own day-0-through-day-13
+// convention. Keep in sync with the `deadline` CHECK constraint in
+// supabase/migrations/0003_flexible_tasks.sql.
 export const PLANNING_HORIZON_DAYS = 14;
 
 export const MONTH_NAMES = [

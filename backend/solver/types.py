@@ -1,5 +1,6 @@
 """Plain data contracts for the solver. Deliberately framework-free (no
-Pydantic/FastAPI here) - Ticket 3 wraps these in a real HTTP schema later.
+Pydantic/FastAPI here) - the API layer wraps these in a real HTTP schema
+separately.
 """
 
 from dataclasses import dataclass, field
@@ -7,9 +8,9 @@ from dataclasses import dataclass, field
 
 @dataclass(frozen=True)
 class BusyInterval:
-    """A fixed or Google-imported event the solver must not place flexible
-    work against (with padding). Fixed/Google events are never constrained
-    against each other - only used here as read-only inputs."""
+    """A fixed or Google-imported event that flexible work must avoid (with
+    padding). These events are never checked against each other - only used
+    here as read-only input."""
 
     day: int  # 0-indexed within the horizon
     start_hour: float  # decimal hour, e.g. 10.0
@@ -18,10 +19,10 @@ class BusyInterval:
 
 @dataclass(frozen=True)
 class FlexibleTaskInput:
-    """A flexible task's remaining work, already resolved upstream (Ticket 4
-    computes remaining_minutes from the task's required duration minus any
-    completed past sessions; overdue tasks are filtered out before reaching
-    the solver at all - it never sees them)."""
+    """A flexible task's remaining work. remaining_minutes is already
+    computed upstream (required duration minus completed past sessions).
+    Overdue tasks are filtered out before reaching the solver - it never
+    sees them."""
 
     id: str
     priority: str  # "High" | "Medium" | "Low"

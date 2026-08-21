@@ -12,13 +12,13 @@ function plural(n: number, word: string): string {
 }
 
 /**
- * Three triggers, matching the decisions record exactly - nothing else marks
- * the schedule stale (a task simply becoming overdue by day rollover, or a
- * session marked completed, are both explicitly "no staleness by itself").
+ * Exactly three triggers - nothing else marks the schedule stale (a task
+ * simply becoming overdue by day rollover, or a session marked completed,
+ * are both explicitly "no staleness by itself").
  *
  * All three compare a row's own `updatedAt` against `lastRunAt`, not against
  * each other or "now" - `updatedAt` equals `createdAt` at insert time, and
- * apply_schedule_update (Ticket 4) touches every included task and bumps
+ * apply_schedule_update touches every included task and bumps
  * schedule_runs.updated_at in the same transaction, so anything the last run
  * already accounted for reads as updatedAt <= lastRunAt, not stale.
  */

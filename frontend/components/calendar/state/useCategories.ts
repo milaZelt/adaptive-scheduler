@@ -50,7 +50,7 @@ export function useCategories(
       }
 
       if (data && data.length === 0) {
-        // First login for this user — seed their default calendar set.
+        // First login for this user - seed their default calendar set.
         const seedRows = DEFAULT_CATEGORIES.map((c) => ({
           user_id: userId,
           name: c.name,

@@ -1,7 +1,7 @@
-"""Fixture-driven tests for the core CP-SAT engine (Ticket 1).
+"""Fixture-driven tests for the core CP-SAT engine.
 
-Each test isolates one specific rule from the decisions record so a future
-change that breaks one piece of behavior fails precisely, not vaguely.
+Each test isolates one specific scheduling rule, so a future change that
+breaks one piece of behavior fails precisely, not vaguely.
 """
 
 from unittest.mock import patch
@@ -59,7 +59,7 @@ def test_over_capacity_task_reports_unscheduled_others_still_placed():
 
 
 # ---------------------------------------------------------------------------
-# Objective: priority is duration-agnostic (round 4's core fix).
+# Objective: priority is duration-agnostic.
 # ---------------------------------------------------------------------------
 
 
@@ -123,13 +123,12 @@ def test_equal_priority_equal_deadline_shorter_task_preferred():
 
 # ---------------------------------------------------------------------------
 # Full lexicographic chain in one scenario: count, then urgency (both within
-# High), then complete dominance over Medium for the exact same resource -
-# the individual stage tests above each isolate one transition, but none of
-# them prove the tiers compose correctly end to end. The shorter-task tier
-# (stage 3) is deliberately not re-proven here - it's already covered in
-# isolation by test_equal_priority_equal_deadline_shorter_task_preferred,
-# and forcing all three within-tier stages plus cross-tier dominance into one
-# scenario would require much more contrived numbers for no added rigor.
+# High), then complete dominance over Medium for the same resource. The
+# tests above each isolate one transition, but none prove the tiers compose
+# correctly end to end. Stage 3 (shorter-task) isn't re-proven here - it's
+# already covered by test_equal_priority_equal_deadline_shorter_task_preferred,
+# and cramming all three stages plus cross-tier dominance into one scenario
+# would need much more contrived numbers for no added rigor.
 # ---------------------------------------------------------------------------
 
 
@@ -351,14 +350,14 @@ def test_overlapping_fixed_events_do_not_break_the_solve():
 # ---------------------------------------------------------------------------
 # Time granularity: every placement aligns to the 15-min grid.
 #
-# This must be a *feasibility* test, not merely a "check the output looks
-# aligned" test - an early version of this test kept passing even with the
-# alignment constraint deleted entirely, because CP-SAT happened to land on
-# clean values for that fixture by chance. A regression test that can pass
-# whether or not the bug exists proves nothing. Here the gap between two
-# busy intervals is deliberately sized to exactly fit the task at one, and
-# only one, non-15-aligned position - so alignment isn't a preference the
-# solver might stumble into, it's the difference between feasible and not.
+# This must be a *feasibility* test, not just a "does the output look
+# aligned" test - an earlier version kept passing even with the alignment
+# constraint deleted, because CP-SAT happened to land on clean values by
+# chance. A test that passes whether or not the bug exists proves nothing.
+# Here the gap between two busy intervals is sized to fit the task at
+# exactly one non-15-aligned position - so alignment isn't just a
+# preference the solver might stumble into, it's the difference between
+# feasible and not.
 # ---------------------------------------------------------------------------
 
 
@@ -414,20 +413,19 @@ def test_empty_task_list_returns_empty_result():
 # A stage that only reaches FEASIBLE (not proven OPTIMAL) within its time
 # budget must still be accepted, not treated as a failure - real task counts
 # are far larger than every fixture above, and this is what production
-# actually hit (Ticket 4 review, real user data): a stage timing out on the
-# *proof* step while still holding a perfectly good, checked-feasible
-# solution. Confirmed to actually discriminate, not just pass: with
-# STAGE_TIME_LIMIT_S patched down for this fixture, the pre-fix check
-# (status != OPTIMAL) raises on this exact scenario; the fix accepts it.
+# actually hit with real user data: a stage timing out on the *proof* step
+# while still holding a perfectly good, checked-feasible solution. Confirmed
+# to actually discriminate, not just pass: with STAGE_TIME_LIMIT_S patched
+# down for this fixture, the pre-fix check (status != OPTIMAL) raises on
+# this exact scenario; the fix accepts it.
 #
-# This is inherently a wall-clock-timing test (there's no deterministic way
-# to force CP-SAT's parallel default search to land on FEASIBLE-not-OPTIMAL
-# short of forcing single-threaded search, which changes the search enough
-# to no longer represent what production actually runs) - 0.3s originally
-# discriminated reliably in isolation, but flaked under real machine load
-# (this repo's own test/build tooling running concurrently). 3.0s held
-# reliably across repeated trials under that same load with a lot more
-# margin; still fast enough not to slow the suite down meaningfully.
+# This is inherently a timing-based test - there's no reliable way to force
+# CP-SAT's default parallel search to land on FEASIBLE-not-OPTIMAL other
+# than forcing single-threaded search, which would no longer represent what
+# production actually runs. 0.3s originally worked in isolation but flaked
+# under real machine load (other test/build tooling running at the same
+# time). 3.0s has held reliably with a lot more margin, and is still fast
+# enough not to slow the suite down.
 # ---------------------------------------------------------------------------
 
 
