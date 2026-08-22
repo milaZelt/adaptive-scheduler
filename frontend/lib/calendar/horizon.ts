@@ -58,3 +58,17 @@ export function parseRequestToday(body: unknown): Date | null {
   const todayDate = parseLocalDate(today);
   return isNaN(todayDate.getTime()) ? null : todayDate;
 }
+
+/**
+ * Pulls `nowHour` (the client's current time of day, as a decimal hour -
+ * e.g. 15.5 for 3:30pm - resolved from the user's real local clock, same
+ * discipline as `today` above) out of a parsed request body. Lets Update
+ * Schedule know not just which day is "today" but which part of it has
+ * already happened, so a flexible session never gets placed earlier today
+ * than the actual current moment. Returns null for anything malformed.
+ */
+export function parseRequestNowHour(body: unknown): number | null {
+  const nowHour = (body as { nowHour?: unknown })?.nowHour;
+  if (typeof nowHour !== "number" || !Number.isFinite(nowHour)) return null;
+  return nowHour >= 0 && nowHour < 24 ? nowHour : null;
+}

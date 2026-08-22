@@ -46,12 +46,19 @@ export function useUpdateSchedule({
 
     let response: UpdateScheduleResponse;
     try {
+      // Computed fresh right now, not derived from the `today` Date above -
+      // that one is fixed at mount time (see AppStateContext), so a tab left
+      // open since this morning would otherwise report a stale hour.
+      const now = new Date();
       const res = await fetch("/api/update-schedule", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // Client's own resolved local date - the server never infers a
-        // timezone or computes its own "today".
-        body: JSON.stringify({ today: toISODate(today) }),
+        // Client's own resolved local date/time - the server never infers a
+        // timezone or computes its own "today"/"now".
+        body: JSON.stringify({
+          today: toISODate(today),
+          nowHour: now.getHours() + now.getMinutes() / 60,
+        }),
       });
       response = (await res.json()) as UpdateScheduleResponse;
     } catch {

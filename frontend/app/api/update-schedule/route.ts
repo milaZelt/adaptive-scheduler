@@ -6,6 +6,7 @@ import { PLANNING_HORIZON_DAYS } from "@/lib/calendar/constants";
 import {
   dayOffsetInHorizon,
   getPlanningHorizon,
+  parseRequestNowHour,
   parseRequestToday,
   type PlanningHorizon,
 } from "@/lib/calendar/horizon";
@@ -105,7 +106,7 @@ function isDemoRateLimited(userId: string): boolean {
 // so POST itself reads as a single top-to-bottom sequence of named steps
 // rather than one long procedural function.
 
-async function parseToday(request: Request): Promise<NextResponse | Date> {
+async function parseToday(request: Request): Promise<NextResponse | { today: Date; nowHour: number }> {
   let body: unknown;
   try {
     body = await request.json();
@@ -115,7 +116,11 @@ async function parseToday(request: Request): Promise<NextResponse | Date> {
 
   const todayDate = parseRequestToday(body);
   if (!todayDate) return errorResponse("Missing or malformed 'today'.", 400);
-  return todayDate;
+
+  const nowHour = parseRequestNowHour(body);
+  if (nowHour === null) return errorResponse("Missing or malformed 'nowHour'.", 400);
+
+  return { today: todayDate, nowHour };
 }
 
 /** Non-null return means "stop and return this" - either a DB error, or a
@@ -529,8 +534,9 @@ async function fetchFreshState(supabase: SupabaseClient, userId: string): Promis
 }
 
 export async function POST(request: Request) {
-  const todayDate = await parseToday(request);
-  if (todayDate instanceof NextResponse) return todayDate;
+  const parsedToday = await parseToday(request);
+  if (parsedToday instanceof NextResponse) return parsedToday;
+  const { today: todayDate, nowHour } = parsedToday;
 
   const supabase = await createClient();
   const user = await getAuthenticatedUser(supabase);
@@ -554,6 +560,15 @@ export async function POST(request: Request) {
     start_hour,
     end_hour,
   }));
+
+  // Block whatever's already elapsed today, so a session never gets placed
+  // earlier today than the actual current moment (e.g. running this at 3pm
+  // shouldn't place anything at 10am today). Deliberately not part of
+  // namedBusyIntervals/explainability above - "it's already 3pm" doesn't
+  // need a "why this slot" callout the way a real competing event does.
+  if (nowHour > 0) {
+    busyIntervals.push({ day: 0, start_hour: 0, end_hour: nowHour });
+  }
 
   const eligible = await gatherEligibleTasks(supabase, user.id, horizon);
   if (eligible instanceof NextResponse) return eligible;

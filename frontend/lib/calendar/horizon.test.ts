@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { PLANNING_HORIZON_DAYS } from "./constants";
-import { dayOffsetInHorizon, getPlanningHorizon, parseRequestToday } from "./horizon";
+import { dayOffsetInHorizon, getPlanningHorizon, parseRequestNowHour, parseRequestToday } from "./horizon";
 import { toISODate } from "./dateUtils";
 
 describe("getPlanningHorizon", () => {
@@ -59,5 +59,42 @@ describe("parseRequestToday", () => {
   it("rejects a non-object body", () => {
     expect(parseRequestToday(null)).toBeNull();
     expect(parseRequestToday("2026-08-12")).toBeNull();
+  });
+});
+
+describe("parseRequestNowHour", () => {
+  it("parses a well-formed decimal hour", () => {
+    expect(parseRequestNowHour({ nowHour: 15.5 })).toBe(15.5);
+  });
+
+  it("accepts the lower boundary (midnight)", () => {
+    expect(parseRequestNowHour({ nowHour: 0 })).toBe(0);
+  });
+
+  it("rejects 24 and above", () => {
+    expect(parseRequestNowHour({ nowHour: 24 })).toBeNull();
+    expect(parseRequestNowHour({ nowHour: 25 })).toBeNull();
+  });
+
+  it("rejects a negative hour", () => {
+    expect(parseRequestNowHour({ nowHour: -1 })).toBeNull();
+  });
+
+  it("rejects a missing nowHour field", () => {
+    expect(parseRequestNowHour({})).toBeNull();
+  });
+
+  it("rejects a non-number nowHour field", () => {
+    expect(parseRequestNowHour({ nowHour: "15.5" })).toBeNull();
+  });
+
+  it("rejects non-finite values", () => {
+    expect(parseRequestNowHour({ nowHour: NaN })).toBeNull();
+    expect(parseRequestNowHour({ nowHour: Infinity })).toBeNull();
+  });
+
+  it("rejects a non-object body", () => {
+    expect(parseRequestNowHour(null)).toBeNull();
+    expect(parseRequestNowHour(15.5)).toBeNull();
   });
 });
