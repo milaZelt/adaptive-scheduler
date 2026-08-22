@@ -193,15 +193,16 @@
   color: var(--muted);
   letter-spacing: 0.02em;
   display: block;
+  margin-top: 0.05rem;
 }
 .geTitle {
   font-size: 0.92rem;
   color: var(--ink);
-  margin-top: 0.05rem;
 }
 .gridEvent.short .geTime {
   display: inline;
-  margin-right: 0.4rem;
+  margin-top: 0;
+  margin-left: 0.4rem;
 }
 .gridEvent.short .geTitle {
   display: inline;

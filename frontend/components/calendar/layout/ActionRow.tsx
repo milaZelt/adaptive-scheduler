@@ -7,6 +7,7 @@ import styles from "./Sidebar.module.css";
 
 export default function ActionRow() {
   const {
+    isDemo,
     openFixedEventDrawer,
     openFlexibleEventDrawer,
     updateSchedule,
@@ -62,7 +63,8 @@ export default function ActionRow() {
 
       <button
         className={`${styles.linkBtn} sans`}
-        disabled={importingGoogleCalendar}
+        disabled={isDemo || importingGoogleCalendar}
+        title={isDemo ? "Available after signing in" : undefined}
         onClick={() => importGoogleCalendar()}
       >
         {importingGoogleCalendar ? "Importing…" : "Import Google Calendar"} <span>⇩</span>

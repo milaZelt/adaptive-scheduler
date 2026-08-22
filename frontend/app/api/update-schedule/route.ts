@@ -74,6 +74,31 @@ function errorResponse(message: string, status: number) {
   return NextResponse.json({ status: "error", message } satisfies UpdateScheduleResponse, { status });
 }
 
+// Anonymous ("Try Demo", Ticket 10) callers only - real accounts have no
+// limit here. In-memory, per server process - resets on restart, doesn't
+// share state across instances. Proportionate for this project's real
+// scale, not production-grade infra.
+//
+// A generous ceiling, not a tight budget: seed_demo_content (migration
+// 0014) seeds 6 flexible tasks, and the client separately caps the
+// visitor's own additions at 5 - legitimate demo usage tops out well under
+// this. It exists to stop a scripted/direct-API abuse case, not to pinch a
+// real demo session, so it's set with real headroom above that legitimate
+// max rather than tracking it exactly (which is exactly what silently broke
+// once already, when the seed data grew and this constant didn't).
+const DEMO_MAX_TASKS = 20;
+const DEMO_RATE_LIMIT = 5;
+const DEMO_RATE_WINDOW_MS = 60_000;
+const demoRequestLog = new Map<string, number[]>();
+
+function isDemoRateLimited(userId: string): boolean {
+  const now = Date.now();
+  const recent = (demoRequestLog.get(userId) ?? []).filter((t) => now - t < DEMO_RATE_WINDOW_MS);
+  recent.push(now);
+  demoRequestLog.set(userId, recent);
+  return recent.length > DEMO_RATE_LIMIT;
+}
+
 // Each step below either returns the data the next step needs, or a
 // ready-to-return NextResponse (error or, for the pre-solve gate, "blocked")
 // - the caller just checks `instanceof NextResponse` and returns it as-is,
@@ -511,6 +536,10 @@ export async function POST(request: Request) {
   const user = await getAuthenticatedUser(supabase);
   if (!user) return errorResponse("Not authenticated.", 401);
 
+  if (user.is_anonymous && isDemoRateLimited(user.id)) {
+    return errorResponse("Too many requests - please wait a moment and try again.", 429);
+  }
+
   const horizon = getPlanningHorizon(todayDate);
 
   const blockedOrError = await checkForUnresolvedPastSessions(supabase, user.id, horizon);
@@ -529,6 +558,10 @@ export async function POST(request: Request) {
   const eligible = await gatherEligibleTasks(supabase, user.id, horizon);
   if (eligible instanceof NextResponse) return eligible;
   const { solverTasks, allTasks, resolvedStatuses } = eligible;
+
+  if (user.is_anonymous && solverTasks.length > DEMO_MAX_TASKS) {
+    return errorResponse(`Demo accounts are limited to ${DEMO_MAX_TASKS} tasks.`, 403);
+  }
 
   const solverResult = await callSolver(solverTasks, busyIntervals);
   if (solverResult instanceof NextResponse) return solverResult;

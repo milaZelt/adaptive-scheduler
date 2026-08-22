@@ -25,6 +25,11 @@ interface AppState
     UseScheduledSessionsResult,
     UseScheduleRunsResult,
     UseNoteResult {
+  /** True for the anonymous "Try Demo" session (Ticket 10) - real solver,
+   *  real (if disposable) account, but a few things read this to disable
+   *  what doesn't make sense without a real identity (Google Calendar
+   *  import) and to show the demo-mode banner. */
+  isDemo: boolean;
   today: Date;
   updatingSchedule: boolean;
   resolvePrompt: UnresolvedSessionInfo[] | null;
@@ -85,13 +90,22 @@ interface ConfirmDialogState {
   onConfirm: () => void;
 }
 
+function removeFromSet(set: Set<string>, id: string): Set<string> {
+  if (!set.has(id)) return set;
+  const next = new Set(set);
+  next.delete(id);
+  return next;
+}
+
 const AppStateContext = createContext<AppState | undefined>(undefined);
 
 export function AppStateProvider({
   userId,
+  isDemo,
   children,
 }: {
   userId: string;
+  isDemo: boolean;
   children: ReactNode;
 }) {
   const [toast, setToast] = useState<string | null>(null);
@@ -190,6 +204,54 @@ export function AppStateProvider({
 
   const closeConfirmDialog = useCallback(() => setConfirmDialog(null), []);
 
+  // Ticket 10 ("Try Demo"): tracks which event/task ids this anonymous
+  // session itself created, so the cap only counts what the visitor
+  // actually added - not the pre-seeded starter content - and deleting one
+  // frees a slot back up, matching how a real limit should feel. Events and
+  // flexible tasks are tracked (and capped) separately, each up to 5, so
+  // adding one kind never eats into the other's allowance. Empty and unused
+  // for a real (non-demo) session.
+  const [demoAddedEventIds, setDemoAddedEventIds] = useState<Set<string>>(new Set());
+  const [demoAddedTaskIds, setDemoAddedTaskIds] = useState<Set<string>>(new Set());
+  const MAX_DEMO_ADDED_ITEMS = 5;
+
+  const createEventDemoCapped = useCallback(
+    async (input: Omit<CalendarEvent, "id">): Promise<CalendarEvent | null> => {
+      if (isDemo && demoAddedEventIds.size >= MAX_DEMO_ADDED_ITEMS) {
+        reportSystemError(`Demo is limited to ${MAX_DEMO_ADDED_ITEMS} added events - sign in for unlimited.`);
+        return null;
+      }
+      const created = await eventsApi.createEvent(input);
+      if (created && isDemo) setDemoAddedEventIds((cur) => new Set(cur).add(created.id));
+      return created;
+    },
+    [isDemo, demoAddedEventIds, eventsApi, reportSystemError],
+  );
+
+  const deleteEventDemoTracked = useCallback(
+    async (id: string): Promise<boolean> => {
+      const success = await eventsApi.deleteEvent(id);
+      if (success && isDemo) setDemoAddedEventIds((cur) => removeFromSet(cur, id));
+      return success;
+    },
+    [eventsApi, isDemo],
+  );
+
+  const createFlexibleTaskDemoCapped = useCallback(
+    async (
+      input: Omit<FlexibleTask, "id" | "schedulingStatus" | "createdAt" | "updatedAt">,
+    ): Promise<FlexibleTask | null> => {
+      if (isDemo && demoAddedTaskIds.size >= MAX_DEMO_ADDED_ITEMS) {
+        reportSystemError(`Demo is limited to ${MAX_DEMO_ADDED_ITEMS} added tasks - sign in for unlimited.`);
+        return null;
+      }
+      const created = await flexibleTasksApi.createFlexibleTask(input);
+      if (created && isDemo) setDemoAddedTaskIds((cur) => new Set(cur).add(created.id));
+      return created;
+    },
+    [isDemo, demoAddedTaskIds, flexibleTasksApi, reportSystemError],
+  );
+
   // Wrap deleteCategory so it cascades into event/task/session removal (kept
   // here since it needs all four hooks' setters - none of them should know
   // about the others).
@@ -210,10 +272,13 @@ export function AppStateProvider({
   const deleteFlexibleTaskCascade = useCallback(
     async (id: string): Promise<boolean> => {
       const success = await flexibleTasksApi.deleteFlexibleTask(id);
-      if (success) scheduledSessionsApi.removeScheduledSessionsByTask(id);
+      if (success) {
+        scheduledSessionsApi.removeScheduledSessionsByTask(id);
+        if (isDemo) setDemoAddedTaskIds((cur) => removeFromSet(cur, id));
+      }
       return success;
     },
-    [flexibleTasksApi, scheduledSessionsApi],
+    [flexibleTasksApi, scheduledSessionsApi, isDemo],
   );
 
   // Recategorizing a task must also update its already-placed sessions'
@@ -233,10 +298,14 @@ export function AppStateProvider({
   );
 
   const value: AppState = {
+    isDemo,
     ...categoriesApi,
     deleteCategory: deleteCategoryCascade,
     ...eventsApi,
+    createEvent: createEventDemoCapped,
+    deleteEvent: deleteEventDemoTracked,
     ...flexibleTasksApi,
+    createFlexibleTask: createFlexibleTaskDemoCapped,
     deleteFlexibleTask: deleteFlexibleTaskCascade,
     updateFlexibleTask: updateFlexibleTaskCascade,
     ...scheduledSessionsApi,

@@ -13,15 +13,17 @@ import SessionDetailModal from "./events/SessionDetailModal";
 import ResolveSessionsModal from "./events/ResolveSessionsModal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Toast from "@/components/ui/Toast";
+import DemoBanner from "./layout/DemoBanner";
 import styles from "./CalendarApp.module.css";
 
 interface CalendarAppProps {
   userId: string;
+  isDemo: boolean;
 }
 
-export default function CalendarApp({ userId }: CalendarAppProps) {
+export default function CalendarApp({ userId, isDemo }: CalendarAppProps) {
   return (
-    <AppStateProvider userId={userId}>
+    <AppStateProvider userId={userId} isDemo={isDemo}>
       <CalendarAppShell />
     </AppStateProvider>
   );
@@ -29,6 +31,7 @@ export default function CalendarApp({ userId }: CalendarAppProps) {
 
 function CalendarAppShell() {
   const {
+    isDemo,
     drawer,
     closeDrawer,
     detailEvent,
@@ -76,6 +79,7 @@ function CalendarAppShell() {
   return (
     <div className={styles.app}>
       <TopBar />
+      {isDemo && <DemoBanner />}
       {initialLoading ? (
         <div className={styles.loadingState}>Loading your calendar…</div>
       ) : (

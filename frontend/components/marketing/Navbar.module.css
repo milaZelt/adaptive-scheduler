@@ -33,17 +33,28 @@
   list-style: none;
 }
 
-.navLinks a {
+.navLinks a,
+.navDemoLink {
   font-size: 0.8rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--muted);
   text-decoration: none;
   font-family: Arial, sans-serif;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
 }
 
-.navLinks a:hover {
+.navLinks a:hover,
+.navDemoLink:hover:not(:disabled) {
   color: var(--pink);
+}
+
+.navDemoLink:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 .navLogin {

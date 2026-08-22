@@ -42,12 +42,12 @@ export default function SessionBlock({ session }: SessionBlockProps) {
       style={{ top, height, background: bg, borderLeftColor: border }}
       onClick={() => openSessionDetail(session)}
     >
-      <span className={styles.geTime}>
-        {fmtHour(start)} – {fmtHour(end)}
-      </span>
       <span className={styles.geTitle}>
         {session.completionStatus === "completed" ? "✓ " : ""}
         {task?.title ?? "Untitled task"}
+      </span>
+      <span className={styles.geTime}>
+        {fmtHour(start)} – {fmtHour(end)}
       </span>
     </button>
   );

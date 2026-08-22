@@ -172,10 +172,10 @@ export default function EventBlock({ event }: EventBlockProps) {
       onPointerDown={draggable ? handleMovePointerDown : undefined}
       onClick={handleClick}
     >
+      <span className={styles.geTitle}>{event.title}</span>
       <span className={styles.geTime}>
         {fmtHour(start)} – {fmtHour(end)}
       </span>
-      <span className={styles.geTitle}>{event.title}</span>
       {draggable && (
         <div className={styles.resizeHandle} onPointerDown={handleResizePointerDown} />
       )}

@@ -1,3 +1,4 @@
+import TryDemoButton from "./TryDemoButton";
 import styles from "./Navbar.module.css";
 
 export default function Navbar() {
@@ -13,6 +14,11 @@ export default function Navbar() {
           </li>
           <li>
             <a href="#faq">FAQ</a>
+          </li>
+          <li>
+            <TryDemoButton className={styles.navDemoLink} loadingLabel="Starting…">
+              Try Demo
+            </TryDemoButton>
           </li>
         </ul>
         <a href="#login" className={styles.navLogin}>

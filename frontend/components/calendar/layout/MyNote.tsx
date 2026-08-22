@@ -19,12 +19,12 @@ function statusText(state: NoteSaveState): string {
 }
 
 export default function MyNote() {
-  const { note, setNote, noteLoading, noteSaveState } = useAppState();
+  const { note, setNote, noteLoading, noteSaveState, isDemo } = useAppState();
 
   return (
     <div>
       <div className={styles.noteLabel}>
-        <span>My Note</span>
+        <span>{isDemo ? "How to Use" : "My Note"}</span>
         {statusText(noteSaveState) && (
           <span
             className={`${styles.noteStatus} ${noteSaveState === "error" ? styles.noteStatusError : ""}`}
@@ -34,12 +34,12 @@ export default function MyNote() {
         )}
       </div>
       <textarea
-        className={styles.noteText}
+        className={`${styles.noteText} ${isDemo ? styles.noteTextDemo : ""}`}
         placeholder={noteLoading ? "Loading…" : "Write yourself a note..."}
         value={note}
         disabled={noteLoading}
         onChange={(e) => setNote(e.target.value)}
-        rows={4}
+        rows={isDemo ? 6 : 4}
       />
     </div>
   );

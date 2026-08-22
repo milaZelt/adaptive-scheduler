@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { GOOGLE_CALENDAR_SCOPE } from "@/lib/google/constants";
+import TryDemoButton from "./TryDemoButton";
 import styles from "./LoginSection.module.css";
 
 export default function LoginSection() {
@@ -61,6 +62,11 @@ export default function LoginSection() {
           </svg>
           {loading ? "Redirecting…" : "Sign in with Google"}
         </button>
+
+        <TryDemoButton className={styles.demoLink} loadingLabel="Starting demo…">
+          Try it without signing up
+        </TryDemoButton>
+
         {error && <p className={styles.error}>{error}</p>}
       </div>
     </section>

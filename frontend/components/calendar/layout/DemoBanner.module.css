@@ -1,0 +1,9 @@
+.banner {
+  padding: 8px 20px;
+  background: var(--pink-fill);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  text-align: center;
+  border-bottom: 1px solid var(--pink-mid);
+}
