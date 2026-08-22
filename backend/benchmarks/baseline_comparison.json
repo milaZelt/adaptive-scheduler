@@ -1,0 +1,322 @@
+[
+  {
+    "seed": 0,
+    "task_count": 12,
+    "greedy_total": 6,
+    "solver_total": 6,
+    "greedy_high": 2,
+    "solver_high": 2
+  },
+  {
+    "seed": 1,
+    "task_count": 12,
+    "greedy_total": 3,
+    "solver_total": 4,
+    "greedy_high": 3,
+    "solver_high": 4
+  },
+  {
+    "seed": 2,
+    "task_count": 12,
+    "greedy_total": 5,
+    "solver_total": 5,
+    "greedy_high": 3,
+    "solver_high": 3
+  },
+  {
+    "seed": 3,
+    "task_count": 12,
+    "greedy_total": 5,
+    "solver_total": 6,
+    "greedy_high": 1,
+    "solver_high": 2
+  },
+  {
+    "seed": 4,
+    "task_count": 12,
+    "greedy_total": 3,
+    "solver_total": 4,
+    "greedy_high": 3,
+    "solver_high": 4
+  },
+  {
+    "seed": 5,
+    "task_count": 12,
+    "greedy_total": 5,
+    "solver_total": 6,
+    "greedy_high": 3,
+    "solver_high": 3
+  },
+  {
+    "seed": 6,
+    "task_count": 12,
+    "greedy_total": 6,
+    "solver_total": 5,
+    "greedy_high": 2,
+    "solver_high": 2
+  },
+  {
+    "seed": 7,
+    "task_count": 12,
+    "greedy_total": 3,
+    "solver_total": 4,
+    "greedy_high": 3,
+    "solver_high": 4
+  },
+  {
+    "seed": 8,
+    "task_count": 12,
+    "greedy_total": 5,
+    "solver_total": 5,
+    "greedy_high": 3,
+    "solver_high": 3
+  },
+  {
+    "seed": 9,
+    "task_count": 12,
+    "greedy_total": 6,
+    "solver_total": 6,
+    "greedy_high": 1,
+    "solver_high": 2
+  },
+  {
+    "seed": 10,
+    "task_count": 12,
+    "greedy_total": 3,
+    "solver_total": 4,
+    "greedy_high": 3,
+    "solver_high": 4
+  },
+  {
+    "seed": 11,
+    "task_count": 12,
+    "greedy_total": 5,
+    "solver_total": 5,
+    "greedy_high": 3,
+    "solver_high": 4
+  },
+  {
+    "seed": 12,
+    "task_count": 12,
+    "greedy_total": 6,
+    "solver_total": 5,
+    "greedy_high": 2,
+    "solver_high": 2
+  },
+  {
+    "seed": 13,
+    "task_count": 12,
+    "greedy_total": 4,
+    "solver_total": 4,
+    "greedy_high": 4,
+    "solver_high": 4
+  },
+  {
+    "seed": 14,
+    "task_count": 12,
+    "greedy_total": 5,
+    "solver_total": 6,
+    "greedy_high": 3,
+    "solver_high": 3
+  },
+  {
+    "seed": 15,
+    "task_count": 12,
+    "greedy_total": 6,
+    "solver_total": 6,
+    "greedy_high": 2,
+    "solver_high": 2
+  },
+  {
+    "seed": 16,
+    "task_count": 12,
+    "greedy_total": 3,
+    "solver_total": 4,
+    "greedy_high": 3,
+    "solver_high": 4
+  },
+  {
+    "seed": 17,
+    "task_count": 12,
+    "greedy_total": 5,
+    "solver_total": 5,
+    "greedy_high": 3,
+    "solver_high": 3
+  },
+  {
+    "seed": 18,
+    "task_count": 12,
+    "greedy_total": 5,
+    "solver_total": 6,
+    "greedy_high": 1,
+    "solver_high": 2
+  },
+  {
+    "seed": 19,
+    "task_count": 12,
+    "greedy_total": 3,
+    "solver_total": 4,
+    "greedy_high": 3,
+    "solver_high": 4
+  },
+  {
+    "seed": 20,
+    "task_count": 12,
+    "greedy_total": 5,
+    "solver_total": 6,
+    "greedy_high": 3,
+    "solver_high": 3
+  },
+  {
+    "seed": 21,
+    "task_count": 12,
+    "greedy_total": 6,
+    "solver_total": 5,
+    "greedy_high": 2,
+    "solver_high": 2
+  },
+  {
+    "seed": 22,
+    "task_count": 12,
+    "greedy_total": 3,
+    "solver_total": 4,
+    "greedy_high": 3,
+    "solver_high": 4
+  },
+  {
+    "seed": 23,
+    "task_count": 12,
+    "greedy_total": 5,
+    "solver_total": 5,
+    "greedy_high": 3,
+    "solver_high": 3
+  },
+  {
+    "seed": 24,
+    "task_count": 12,
+    "greedy_total": 6,
+    "solver_total": 6,
+    "greedy_high": 1,
+    "solver_high": 2
+  },
+  {
+    "seed": 25,
+    "task_count": 12,
+    "greedy_total": 3,
+    "solver_total": 4,
+    "greedy_high": 3,
+    "solver_high": 4
+  },
+  {
+    "seed": 26,
+    "task_count": 12,
+    "greedy_total": 5,
+    "solver_total": 5,
+    "greedy_high": 3,
+    "solver_high": 4
+  },
+  {
+    "seed": 27,
+    "task_count": 12,
+    "greedy_total": 6,
+    "solver_total": 5,
+    "greedy_high": 2,
+    "solver_high": 2
+  },
+  {
+    "seed": 28,
+    "task_count": 12,
+    "greedy_total": 4,
+    "solver_total": 4,
+    "greedy_high": 4,
+    "solver_high": 4
+  },
+  {
+    "seed": 29,
+    "task_count": 12,
+    "greedy_total": 5,
+    "solver_total": 6,
+    "greedy_high": 3,
+    "solver_high": 3
+  },
+  {
+    "seed": 30,
+    "task_count": 12,
+    "greedy_total": 6,
+    "solver_total": 6,
+    "greedy_high": 2,
+    "solver_high": 2
+  },
+  {
+    "seed": 31,
+    "task_count": 12,
+    "greedy_total": 3,
+    "solver_total": 4,
+    "greedy_high": 3,
+    "solver_high": 4
+  },
+  {
+    "seed": 32,
+    "task_count": 12,
+    "greedy_total": 5,
+    "solver_total": 5,
+    "greedy_high": 3,
+    "solver_high": 3
+  },
+  {
+    "seed": 33,
+    "task_count": 12,
+    "greedy_total": 5,
+    "solver_total": 6,
+    "greedy_high": 1,
+    "solver_high": 2
+  },
+  {
+    "seed": 34,
+    "task_count": 12,
+    "greedy_total": 3,
+    "solver_total": 4,
+    "greedy_high": 3,
+    "solver_high": 4
+  },
+  {
+    "seed": 35,
+    "task_count": 12,
+    "greedy_total": 5,
+    "solver_total": 6,
+    "greedy_high": 3,
+    "solver_high": 3
+  },
+  {
+    "seed": 36,
+    "task_count": 12,
+    "greedy_total": 6,
+    "solver_total": 5,
+    "greedy_high": 2,
+    "solver_high": 2
+  },
+  {
+    "seed": 37,
+    "task_count": 12,
+    "greedy_total": 3,
+    "solver_total": 4,
+    "greedy_high": 3,
+    "solver_high": 4
+  },
+  {
+    "seed": 38,
+    "task_count": 12,
+    "greedy_total": 5,
+    "solver_total": 5,
+    "greedy_high": 3,
+    "solver_high": 3
+  },
+  {
+    "seed": 39,
+    "task_count": 12,
+    "greedy_total": 6,
+    "solver_total": 6,
+    "greedy_high": 1,
+    "solver_high": 2
+  }
+]
