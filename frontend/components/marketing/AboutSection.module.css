@@ -1,47 +1,98 @@
 .about {
-  background: var(--pink-pale);
-  padding: 6rem 4rem;
+  padding: 2rem var(--gutter) 8rem;
 }
 
 .inner {
-  max-width: 680px;
-  margin: 0 auto;
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+  max-width: 720px;
+  margin-left: 25%;
 }
 
 .tag {
-  display: inline-block;
-  font-size: 0.72rem;
-  letter-spacing: 0.18em;
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--pink-mid);
-  border: 1px solid var(--pink-mid);
-  padding: 0.35rem 0.9rem;
-  border-radius: 2rem;
-  margin-bottom: 1.5rem;
-  font-family: Arial, sans-serif;
+  color: var(--pink);
 }
 
 .title {
-  font-size: clamp(2rem, 4vw, 2.75rem);
+  margin: 0;
+  font-size: clamp(2.4rem, 5vw, 3.6rem);
   font-weight: 400;
-  line-height: 1.15;
-  color: var(--pink);
-  margin-bottom: 2rem;
+  line-height: 1.05;
 }
 
 .body {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
-  text-align: left;
-  font-size: 1.05rem;
-  line-height: 1.8;
-  color: var(--muted);
+  gap: 1.5rem;
+  margin-top: 0.75rem;
+  padding-left: 2rem;
+  max-width: 900px;
 }
 
-@media (max-width: 768px) {
-  .about {
-    padding: 4rem 1.5rem;
+.body::before {
+  content: "";
+  position: absolute;
+  left: 0.25rem;
+  top: 0.6em;
+  bottom: 0.6em;
+  width: 1px;
+  background: linear-gradient(180deg, var(--pink-mid) 0%, var(--pink) 55%, #e8b88a 100%);
+}
+
+.body p {
+  --dot-color: var(--pink-mid);
+  --dot-glow: rgba(201, 138, 154, 0.18);
+  position: relative;
+  margin: 0;
+  padding: 0.4rem 0.6rem;
+  margin-left: -0.6rem;
+  border-radius: 0.75rem;
+  font-size: 1.18rem;
+  color: #4c3e42;
+  line-height: 1.8;
+  text-wrap: pretty;
+  cursor: default;
+  transition: color 0.25s ease, background 0.25s ease;
+}
+
+.body p:hover {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.body p::before {
+  content: "";
+  position: absolute;
+  left: -1.4rem;
+  top: 1.05em;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--dot-color);
+  transform: translateX(-4px) scale(1);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.body p:hover::before {
+  transform: translateX(-4px) scale(1.7);
+  box-shadow: 0 0 0 6px var(--dot-glow);
+}
+
+.body p.closing {
+  color: var(--ink);
+  --dot-color: #e8b88a;
+  --dot-glow: rgba(232, 184, 138, 0.22);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .body p,
+  .body p::before {
+    transition: none;
   }
 }

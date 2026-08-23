@@ -21,6 +21,14 @@ export default function ActionRow() {
   return (
     <div className={styles.actionRow}>
       <button
+        className={`${styles.updateBtn} sans`}
+        disabled={updatingSchedule}
+        onClick={() => updateSchedule()}
+      >
+        {updatingSchedule ? "Updating…" : "Update Schedule"}
+      </button>
+
+      <button
         ref={createBtnRef}
         className={`${styles.linkBtn} sans`}
         onClick={() => setMenuAnchor(createBtnRef.current?.getBoundingClientRect() ?? null)}
@@ -52,14 +60,6 @@ export default function ActionRow() {
           ]}
         />
       )}
-
-      <button
-        className={`${styles.linkBtn} sans`}
-        disabled={updatingSchedule}
-        onClick={() => updateSchedule()}
-      >
-        {updatingSchedule ? "Updating…" : "Update Schedule"} <span>↻</span>
-      </button>
 
       <button
         className={`${styles.linkBtn} sans`}

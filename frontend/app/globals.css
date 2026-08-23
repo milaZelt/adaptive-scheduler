@@ -22,6 +22,18 @@
 
   --font-serif: "Times New Roman", Times, serif;
   --font-sans: Arial, Helvetica, sans-serif;
+
+  /* Marketing-page gradient + glass tokens - only ever used by
+     app/page.module.css and components/marketing/*, scoped there rather
+     than changing body's own background, so the authenticated app (which
+     shares this file) keeps its plain white ground. */
+  --grad: linear-gradient(172deg, #f3cdd6 0%, #f0c9ce 14%, #f4dde3 30%, #f7d9d4 52%, #f9e3c9 74%, #f6ebe4 100%);
+  --glass: rgba(255, 254, 253, 0.52);
+  --glass-strong: rgba(255, 254, 253, 0.72);
+  --glass-line: rgba(255, 255, 255, 0.68);
+  --glass-shadow: 0 18px 60px rgba(160, 120, 130, 0.12);
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --gutter: 5.5rem;
 }
 
 html,
@@ -46,4 +58,10 @@ button {
 
 .sans {
   font-family: var(--font-sans);
+}
+
+@media (max-width: 720px) {
+  :root {
+    --gutter: 1.5rem;
+  }
 }

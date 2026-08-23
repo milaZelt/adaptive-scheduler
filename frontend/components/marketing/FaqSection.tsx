@@ -19,7 +19,7 @@ const faqs = [
   {
     question: "Is my data private?",
     answer:
-      "Yes. Your calendar and account data are tied to your login and never shared with anyone. You can delete your data at any time.",
+      "Yes. Your calendar and account data are tied to your login and never shared with anyone. You can delete individual tasks, events, and calendars whenever you want.",
   },
 ];
 
@@ -27,16 +27,23 @@ export default function FaqSection() {
   return (
     <section id="faq" className={styles.faq}>
       <div className={styles.inner}>
-        <span className={styles.tag}>FAQ</span>
-        <h2 className={styles.title}>Questions & Answers</h2>
+        <div className={styles.aside} data-reveal="1">
+          <span className={styles.tag}>FAQ</span>
+          <h2 className={styles.title}>Questions &amp; Answers</h2>
+        </div>
         <div className={styles.list}>
-          {faqs.map((faq) => (
-            <details key={faq.question} className={styles.item}>
+          {faqs.map((faq, i) => (
+            <details
+              key={faq.question}
+              className={styles.item}
+              data-reveal={i + 1}
+            >
               <summary className={styles.question}>
-                {faq.question}
-                <span className={styles.chevron} aria-hidden="true">
-                  &#8964;
+                <span className={styles.number}>
+                  {String(i + 1).padStart(2, "0")}
                 </span>
+                <span>{faq.question}</span>
+                <span className={styles.indicator} aria-hidden="true" />
               </summary>
               <p className={styles.answer}>{faq.answer}</p>
             </details>

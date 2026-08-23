@@ -1,102 +1,82 @@
 .login {
-  padding: 6rem 4rem;
   display: flex;
-  justify-content: center;
-}
-
-.card {
-  width: 100%;
-  max-width: 480px;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.2rem;
+  padding: 3rem var(--gutter) 9rem;
   text-align: center;
-  padding: 3.5rem 3rem;
-  border: 1px solid var(--line);
-  border-radius: 1.5rem;
-  background: var(--white);
 }
 
 .tag {
-  display: inline-block;
-  font-size: 0.72rem;
-  letter-spacing: 0.18em;
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  letter-spacing: 0.24em;
   text-transform: uppercase;
-  color: var(--pink-mid);
-  border: 1px solid var(--pink-mid);
-  padding: 0.35rem 0.9rem;
-  border-radius: 2rem;
-  margin-bottom: 1.5rem;
-  font-family: Arial, sans-serif;
+  color: var(--pink);
 }
 
 .title {
-  font-size: 2rem;
+  margin: 0;
+  font-size: clamp(2.4rem, 5vw, 4rem);
   font-weight: 400;
-  color: var(--pink);
-  margin-bottom: 2rem;
-  line-height: 1.2;
+  line-height: 1.05;
 }
 
 .googleButton {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 0.75rem;
-  background: transparent;
-  color: var(--ink);
-  padding: 0.8rem 2rem;
-  border-radius: 2rem;
-  font-family: Arial, sans-serif;
-  font-size: 0.8rem;
-  letter-spacing: 0.05em;
-  border: 1.5px solid var(--line);
+  justify-content: center;
+  gap: 0.8rem;
+  padding: 1.2rem 2.8rem;
+  border: none;
+  border-radius: 2.5rem;
+  background: var(--ink);
+  color: var(--white);
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
   cursor: pointer;
-  transition:
-    border-color 0.2s,
-    transform 0.15s;
+  box-shadow: 0 18px 50px rgba(90, 60, 66, 0.22);
+  transition: transform 0.3s var(--ease), box-shadow 0.3s ease,
+    background 0.25s ease;
 }
 
 .googleButton:hover:not(:disabled) {
-  border-color: var(--pink);
-  transform: translateY(-1px);
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 26px 66px rgba(90, 60, 66, 0.3);
 }
 
 .googleButton:disabled {
-  cursor: not-allowed;
-  opacity: 0.7;
+  opacity: 0.65;
+  cursor: default;
+}
+
+.googleButton svg {
+  display: block;
+  background: var(--white);
+  border-radius: 50%;
+  padding: 1px;
 }
 
 .demoLink {
-  display: block;
-  margin: 1.25rem auto 0;
-  background: none;
+  padding: 0 0 3px;
   border: none;
-  color: var(--muted);
-  font-family: Arial, sans-serif;
+  border-bottom: 1px solid rgba(201, 138, 154, 0.5);
+  background: none;
+  font-family: var(--font-sans);
   font-size: 0.78rem;
-  text-decoration: underline;
+  color: #8a7276;
   cursor: pointer;
+  transition: color 0.25s ease, border-color 0.25s ease;
 }
 
-.demoLink:hover:not(:disabled) {
-  color: var(--pink);
-}
-
-.demoLink:disabled {
-  cursor: not-allowed;
-  opacity: 0.7;
+.demoLink:hover {
+  color: var(--ink);
+  border-color: var(--pink);
 }
 
 .error {
-  margin-top: 1.25rem;
+  margin: 0.4rem 0 0;
+  font-family: var(--font-sans);
   font-size: 0.8rem;
-  color: var(--pink);
-  font-family: Arial, sans-serif;
-}
-
-@media (max-width: 768px) {
-  .login {
-    padding: 4rem 1.5rem;
-  }
-
-  .card {
-    padding: 2.5rem 1.75rem;
-  }
+  color: var(--danger);
 }

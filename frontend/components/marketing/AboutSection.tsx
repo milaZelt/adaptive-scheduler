@@ -10,11 +10,21 @@ export default function AboutSection() {
   return (
     <section id="about" className={styles.about}>
       <div className={styles.inner}>
-        <span className={styles.tag}>About</span>
-        <h2 className={styles.title}>Why I built this?</h2>
+        <span className={styles.tag} data-reveal="1">
+          About
+        </span>
+        <h2 className={styles.title} data-reveal="2">
+          Why I built this?
+        </h2>
         <div className={styles.body}>
           {intro.map((paragraph, i) => (
-            <p key={i}>{paragraph}</p>
+            <p
+              key={i}
+              data-reveal={i + 3}
+              className={i === intro.length - 1 ? styles.closing : undefined}
+            >
+              {paragraph}
+            </p>
           ))}
         </div>
       </div>

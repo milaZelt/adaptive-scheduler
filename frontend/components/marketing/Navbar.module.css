@@ -1,90 +1,95 @@
 .nav {
-  position: fixed;
+  position: sticky;
   top: 0;
-  left: 0;
-  right: 0;
-  z-index: 100;
+  z-index: 30;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1.25rem 4rem;
-  background: rgba(255, 253, 252, 0.92);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--line);
+  gap: 2rem;
+  margin: 1.2rem 2.5rem;
+  padding: 1.25rem 2.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  border-radius: 2.5rem;
+  background: var(--glass-strong);
+  backdrop-filter: blur(24px);
+  box-shadow: 0 8px 30px rgba(160, 120, 130, 0.08);
 }
 
 .navLogo {
-  font-size: 1.15rem;
-  font-weight: 400;
-  color: var(--pink);
-  letter-spacing: 0.02em;
+  font-size: 1.4rem;
+  color: var(--ink);
   text-decoration: none;
 }
 
 .navRight {
   display: flex;
   align-items: center;
-  gap: 2rem;
+  gap: 2.2rem;
 }
 
 .navLinks {
   display: flex;
-  gap: 2.5rem;
+  align-items: center;
+  gap: 2.2rem;
   list-style: none;
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
 }
 
 .navLinks a,
 .navDemoLink {
-  font-size: 0.8rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--muted);
+  color: #8a7276;
   text-decoration: none;
-  font-family: Arial, sans-serif;
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
+  transition: color 0.25s ease;
 }
 
 .navLinks a:hover,
-.navDemoLink:hover:not(:disabled) {
-  color: var(--pink);
+.navDemoLink:hover {
+  color: var(--ink);
 }
 
-.navDemoLink:disabled {
-  opacity: 0.6;
-  cursor: default;
+.navDemoLink {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
 }
 
 .navLogin {
-  background: var(--pink);
-  color: var(--white);
-  padding: 0.6rem 1.6rem;
+  padding: 0.68rem 1.7rem;
   border-radius: 2rem;
-  font-family: Arial, sans-serif;
-  font-size: 0.78rem;
-  letter-spacing: 0.1em;
+  background: var(--ink);
+  color: var(--white);
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   text-decoration: none;
-  border: none;
-  cursor: pointer;
-  transition:
-    background 0.2s,
-    transform 0.15s;
+  transition: background 0.25s ease, transform 0.25s var(--ease);
 }
 
 .navLogin:hover {
-  background: var(--pink-mid);
-  transform: translateY(-1px);
+  background: #493639;
+  transform: translateY(-2px);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 720px) {
   .nav {
-    padding: 1rem 1.5rem;
+    margin: 0.8rem 1rem;
+    padding: 0.9rem 1.2rem;
+    gap: 1rem;
   }
 
   .navLinks {
-    display: none;
+    gap: 1.1rem;
+  }
+
+  .navRight {
+    gap: 1.1rem;
   }
 }

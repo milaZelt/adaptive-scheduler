@@ -4,15 +4,16 @@ export default function Hero() {
   return (
     <section id="top" className={styles.hero}>
       <div className={styles.heroInner}>
-        <span className={styles.heroTag}>Welcome!</span>
-        <h1 className={styles.heroTitle}>
+        <span className={styles.heroTag} data-reveal="1">
+          Welcome!
+        </span>
+        <h1 className={styles.heroTitle} data-reveal="2">
           Nextly
-          <br />
         </h1>
-        <p className={styles.heroSub}>
+        <p className={styles.heroSub} data-reveal="3">
           Stop deciding. Start doing.
         </p>
-        <div className={styles.heroCtas}>
+        <div className={styles.heroCtas} data-reveal="4">
           <a href="#login" className={styles.btnPrimary}>
             Log In
           </a>
@@ -21,7 +22,10 @@ export default function Hero() {
           </a>
         </div>
       </div>
-      <div className={styles.scrollHint}>Scroll to explore</div>
+      <div className={styles.scrollHint} data-reveal="5">
+        <span className={styles.scrollRule} aria-hidden="true" />
+        Scroll to explore
+      </div>
     </section>
   );
 }

@@ -18,14 +18,14 @@
   font-size: 0.68rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--pink);
 }
 .daNum {
   font-size: 4.2rem;
-  color: var(--pink);
+  color: var(--ink);
   line-height: 1;
   margin: 0.3rem 0 0.2rem;
-  font-weight: 400;
+  font-weight: 500;
 }
 .daMonth {
   font-size: 1.05rem;
@@ -38,6 +38,31 @@
   flex-direction: column;
   gap: 0.9rem;
   position: relative;
+}
+.updateBtn {
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: center;
+  line-height: 1.35;
+  color: var(--white);
+  background: var(--ink);
+  border: none;
+  border-radius: 2.5rem;
+  padding: 0.85rem 1.25rem;
+  margin-bottom: 0.4rem;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+}
+.updateBtn:hover:not(:disabled) {
+  background: #493639;
+  transform: translateY(-1px);
+}
+.updateBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 .linkBtn {
   font-family: var(--font-sans);
