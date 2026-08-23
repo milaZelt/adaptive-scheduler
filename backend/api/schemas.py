@@ -1,19 +1,21 @@
-"""HTTP-facing request/response contracts. Mirrors solver/types.py field for
-field, but stays a separate Pydantic layer on purpose - the solver package
-remains framework-free, and this is where input gets validated as
-untrusted. Just as Next.js treats FastAPI's response as untrusted, FastAPI
-shouldn't blindly trust whatever Next.js sends either.
+"""HTTP request/response types. Mirrors solver/types.py field for field,
+but stays a separate Pydantic layer on purpose - the solver package stays
+framework-free, and this is where we validate input we don't trust yet.
+Next.js already treats FastAPI's replies as untrusted, so FastAPI should
+do the same for whatever Next.js sends.
 """
 
 from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
+# Keep in sync with solver/constants.py's PRIORITY_ORDER and solver/types.py's
+# FlexibleTaskInput.priority comment - all three list the same values.
 Priority = Literal["High", "Medium", "Low"]
 
-# Generous sanity cap, not a product rule - the actual 14-day horizon is a
-# Next.js/frontend constant (PLANNING_HORIZON_DAYS) this API doesn't need to
-# know about or duplicate. This just guards against pathological input.
+# A generous safety cap, not a product rule. The real 14-day horizon lives
+# in the frontend as PLANNING_HORIZON_DAYS - this API doesn't need to
+# duplicate it. This cap just blocks extreme bad input.
 MAX_HORIZON_DAYS = 60
 
 
@@ -29,7 +31,7 @@ class BusyIntervalIn(BaseModel):
         return self
 
 
-class FlexibleTaskIn(BaseModel):
+class FlexibleTaskPayload(BaseModel):
     id: str = Field(min_length=1)
     priority: Priority
     deadline_day: int = Field(ge=0, description="0-indexed day offset within the horizon, inclusive.")
@@ -39,7 +41,7 @@ class FlexibleTaskIn(BaseModel):
     splittable: bool
 
     @model_validator(mode="after")
-    def check_session_bounds(self) -> "FlexibleTaskIn":
+    def check_session_bounds(self) -> "FlexibleTaskPayload":
         if self.max_session_minutes < self.min_session_minutes:
             raise ValueError("max_session_minutes must be >= min_session_minutes")
         return self
@@ -48,7 +50,7 @@ class FlexibleTaskIn(BaseModel):
 class SolveRequest(BaseModel):
     horizon_days: int = Field(gt=0, le=MAX_HORIZON_DAYS)
     busy_intervals: list[BusyIntervalIn] = Field(default_factory=list)
-    tasks: list[FlexibleTaskIn] = Field(default_factory=list)
+    tasks: list[FlexibleTaskPayload] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def check_no_duplicate_task_ids(self) -> "SolveRequest":

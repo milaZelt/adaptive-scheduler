@@ -2,22 +2,23 @@
 
 MINUTES_PER_DAY = 24 * 60
 
-# Solver's own scheduling window - separate from the calendar grid's display
-# range (frontend START_HOUR/END_HOUR = 6-23). They share an endpoint by
-# coincidence only; don't link them.
+# The solver's own time window - separate from the frontend calendar's
+# display range. The end time matches by coincidence only - don't link
+# them.
 WINDOW_START_MIN = 8 * 60  # 8:00 AM
 WINDOW_END_MIN = 23 * 60  # 11:00 PM
 
-# Minimum gap required around any busy interval (fixed event, Google event,
-# or another flexible session) before a flexible session may be placed.
+# Minimum gap required around any busy time - a fixed event, a Google
+# event, or another flexible session.
 PADDING_MIN = 30
 
-# Time granularity, matches the frontend's existing 15-minute drag/resize snap.
+# Time step size - matches the frontend's 15-minute drag/resize snap.
 SNAP_MIN = 15
 
-# Technical bound on how many candidate sessions the solver considers per
-# splittable task - not a product rule, just keeps the model's variable count
-# bounded. Generous relative to realistic task sizes.
+# Max number of candidate sessions per splittable task. Just keeps the
+# model size bounded, not a product rule - generous for real task sizes.
 MAX_CANDIDATE_SESSIONS = 8
 
+# Keep this in sync with types.py's FlexibleTaskInput.priority comment and
+# api/schemas.py's Priority literal - all three list the same values.
 PRIORITY_ORDER = ["High", "Medium", "Low"]

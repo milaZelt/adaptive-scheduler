@@ -47,10 +47,9 @@ export default function CategoryRow({ category }: CategoryRowProps) {
     });
   }
 
-  // The import category is found by its is_google_import flag (see
-  // resolveImportCategoryId), not by name, so renaming it wouldn't actually
-  // break the next import - this is blocked anyway so the name stays an
-  // honest label for what the category actually contains.
+  // This category is matched by its is_google_import flag, not its name,
+  // so renaming it wouldn't actually break imports. We block renaming
+  // anyway so the name always describes what's really inside.
   const menuItems: ContextMenuItem[] = [
     ...(category.isGoogleImport
       ? []

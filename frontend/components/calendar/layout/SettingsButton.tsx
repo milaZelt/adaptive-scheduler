@@ -13,6 +13,9 @@ const SCHEDULING_SETTINGS = {
   minBreakMinutes: 30,
 };
 
+// This is the one icon in the app that's an SVG instead of a plain Unicode
+// glyph - it's a persistent nav icon, so it should render crisp and the
+// same everywhere, not depend on the system font's gear character.
 function GearIcon() {
   return (
     <svg

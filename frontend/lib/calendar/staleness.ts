@@ -12,15 +12,13 @@ function plural(n: number, word: string): string {
 }
 
 /**
- * Exactly three triggers - nothing else marks the schedule stale (a task
- * simply becoming overdue by day rollover, or a session marked completed,
- * are both explicitly "no staleness by itself").
+ * Only three things make the schedule stale: new/edited tasks, missed
+ * sessions, or new conflicts. Becoming overdue, or marking a session
+ * completed, does NOT make it stale by itself.
  *
- * All three compare a row's own `updatedAt` against `lastRunAt`, not against
- * each other or "now" - `updatedAt` equals `createdAt` at insert time, and
- * apply_schedule_update touches every included task and bumps
- * schedule_runs.updated_at in the same transaction, so anything the last run
- * already accounted for reads as updatedAt <= lastRunAt, not stale.
+ * We compare each row's `updatedAt` to `lastRunAt`, never to "now". A row's
+ * `updatedAt` starts equal to `createdAt`, and every successful run bumps
+ * both together - so anything the last run already saw is not stale.
  */
 export function computeStaleness(params: {
   today: Date;
@@ -43,9 +41,8 @@ export function computeStaleness(params: {
   ).length;
   if (missedCount > 0) reasons.push(plural(missedCount, "missed session"));
 
-  // Only today-or-future sessions represent a live, still-visible placement
-  // that a new fixed event could actually collide with on the grid - a
-  // conflict against a past session is moot, nothing left to reschedule.
+  // Only look at today-or-later sessions. A past session can't really
+  // conflict with anything - there's nothing left to reschedule.
   const todayISO = toISODate(today);
   const upcomingSessions = scheduledSessions.filter((s) => s.date >= todayISO);
   let conflictCount = 0;

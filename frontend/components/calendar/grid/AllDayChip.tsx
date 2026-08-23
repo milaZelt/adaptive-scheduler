@@ -2,7 +2,7 @@
 
 import React from "react";
 import type { CalendarEvent } from "@/lib/calendar/types";
-import { shadeColor } from "@/lib/calendar/colorUtils";
+import { getCategoryColors } from "@/lib/calendar/colorUtils";
 import { useAppState } from "../state/AppStateContext";
 import styles from "./Calendar.module.css";
 
@@ -13,8 +13,7 @@ interface AllDayChipProps {
 export default function AllDayChip({ event }: AllDayChipProps) {
   const { getCategory, openEventDetail } = useAppState();
   const category = getCategory(event.categoryId);
-  const bg = category ? category.color : "#eeeeee";
-  const border = category ? shadeColor(category.color, -25) : "#cccccc";
+  const { bg, border } = getCategoryColors(category);
 
   return (
     <button

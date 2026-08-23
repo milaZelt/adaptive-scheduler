@@ -1,8 +1,9 @@
-"""Tests for the FastAPI wrapper layer. test_engine.py already thoroughly
-proves the solver's actual scheduling behavior - these tests focus on
-what's new at the HTTP boundary: auth enforcement, request validation, and
-that the wrapping/serialization round-trip is correct (checked against one
-known scenario from test_engine.py, not re-proving the whole algorithm).
+"""Tests for the FastAPI wrapper layer. test_engine.py already proves the
+solver's real scheduling behavior, so these tests focus on what's new at
+the HTTP boundary: auth, request validation, and that
+wrapping/serialization round-trips correctly. That last part is checked
+against one known scenario from test_engine.py - not re-proving the
+whole algorithm.
 """
 
 import pytest
@@ -87,9 +88,9 @@ def test_solve_accepts_correct_shared_secret(client):
 
 
 # ---------------------------------------------------------------------------
-# Request validation - one case per rejection reason. Parametrized since
-# every case follows the same "POST malformed body, expect 422" shape; only
-# the body differs.
+# Request validation - one case per rejection reason. Parametrized because
+# every case is the same shape: POST a bad body, expect 422. Only the
+# body changes.
 # ---------------------------------------------------------------------------
 
 _DUPLICATE_TASK = non_splittable_task("dup", "High", deadline_day=0, minutes=60)
@@ -161,9 +162,9 @@ def test_solve_empty_tasks_returns_empty_result(client):
 
 def test_solve_matches_high_priority_wins_contested_slot_fixture(client):
     # Same scenario as test_engine.py's
-    # test_high_priority_short_task_wins_contested_slot_over_medium_long_task
-    # - proves the HTTP wrapping round-trip is correct, not re-proving the
-    # solver logic itself (already covered thoroughly in test_engine.py).
+    # test_high_priority_short_task_wins_contested_slot_over_medium_long_task.
+    # This proves the HTTP wrapping round-trips correctly - it's not
+    # re-testing the solver logic, which test_engine.py already covers.
     request_body = {
         "horizon_days": 1,
         "busy_intervals": [{"day": 0, "start_hour": 9.0, "end_hour": 21.5}],

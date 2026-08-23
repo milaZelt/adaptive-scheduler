@@ -3,16 +3,15 @@ export interface Category {
   name: string;
   color: string;
   checked: boolean;
-  /** True only for the one reserved category Google Calendar imports land
-   *  in. Imported events are read-only mirrors of real Google events, so
-   *  this category is excluded from new event/task creation and can't be
-   *  renamed (see CategoryRow.tsx). */
+  /** True only for the special category that holds Google Calendar imports.
+   *  These events are read-only copies, so this category can't be picked
+   *  for new events/tasks, or renamed (see CategoryRow.tsx). */
   isGoogleImport: boolean;
 }
 
 export type EventType = "fixed" | "flexible";
-/** 'google' events are read-only imported copies, replaced wholesale on
- *  each import, never edited in place. */
+/** 'google' events are read-only copies. Each import fully replaces them -
+ *  they're never edited in place. */
 export type EventSource = "local" | "google";
 export type RepeatOption =
   | "none"
@@ -57,27 +56,11 @@ export interface CalendarEvent {
   googleEventId?: string;
 }
 
-/** Shape logged to console on tear-sheet Save (no backend submit yet). */
-export interface FixedEventFormState {
-  mode: "create" | "edit";
-  id: string | null;
-  type: "fixed";
-  title: string;
-  date: string;
-  allDay: boolean;
-  start: number | null;
-  end: number | null;
-  repeat: RepeatOption;
-  customRecurrence: CustomRecurrence | null;
-  description: string;
-  categoryId: string;
-}
-
 export type SchedulingStatus = "not_yet_scheduled" | "scheduled" | "couldnt_fit" | "overdue";
 
-/** A flexible task definition - solver input. Never has a date/time of its
- *  own; once Update Schedule places it, the placement lives as a separate
- *  scheduled_sessions row, not on this record. */
+/** A flexible task - input to the solver. It never has its own date/time;
+ *  once Update Schedule places it, that placement is a separate
+ *  scheduled_sessions row. */
 export interface FlexibleTask {
   id: string;
   title: string;
@@ -91,22 +74,20 @@ export interface FlexibleTask {
   description?: string;
   schedulingStatus: SchedulingStatus;
   createdAt: string; // ISO timestamp
-  updatedAt: string; // ISO timestamp - equals createdAt at insert time, bumped by the DB
-  // trigger on every update (including the status update Update Schedule
-  // itself performs). The staleness check compares this against
-  // schedule_runs.updated_at to tell "changed since the last run" apart
-  // from "just re-confirmed by that same run."
+  // ISO timestamp. Starts equal to createdAt, then a DB trigger bumps it on
+  // every update (including Update Schedule's own status updates). The
+  // staleness check uses this to tell "changed since the last run" from
+  // "just confirmed by that same run."
+  updatedAt: string;
 }
 
 export type SessionCompletionStatus = "unresolved" | "completed" | "missed";
 
-/** Structured facts captured at solve time, turned into an explanation
- *  later at display time. Captured now because "why" describes calendar
- *  state at the moment of solving, which can't be reconstructed
- *  afterward. Limited to what the solver's actual inputs/outputs can
- *  honestly support (tier composition, calendar adjacency) - not a claim
- *  about its internal search (e.g. "beat task X for this slot"), which the
- *  result data alone can't prove. */
+/** Facts captured when the solver runs, used to build a "why here"
+ *  explanation later. We capture it now because calendar state at solve
+ *  time can't be rebuilt afterward. We only record what the solver's real
+ *  input/output can prove (like priority mix and nearby events) - not
+ *  internal reasoning we can't verify. */
 export interface PlacementReason {
   priority: Priority;
   deadline: string; // the task's deadline at solve time, ISO 'YYYY-MM-DD'
@@ -119,9 +100,9 @@ export interface PlacementReason {
   blockedBy: { title: string; start: number; end: number } | null;
 }
 
-/** One placed block of a flexible task - solver output. Read-only in V1
- *  beyond completionStatus; edit/delete happens through the underlying
- *  FlexibleTask or a fresh Update Schedule run, never on this row directly. */
+/** One placed block of a flexible task - output from the solver. You can
+ *  only change its completionStatus directly; everything else changes
+ *  through the FlexibleTask or a new Update Schedule run. */
 export interface ScheduledSession {
   id: string;
   taskId: string;
@@ -155,11 +136,10 @@ export type UpdateScheduleResponse =
     }
   | { status: "error"; message: string };
 
-/** POST /api/import-google-calendar response. "not_connected" is distinct
- *  from "error" - it means the request succeeded but this user has no
- *  usable Google credentials (never connected, or their refresh token was
- *  revoked), which the UI should offer to fix by signing in again rather
- *  than treating as a generic failure to retry. */
+/** POST /api/import-google-calendar response. "not_connected" is not an
+ *  error - it means this user has no usable Google credentials yet (never
+ *  connected, or their token was revoked). The UI should offer "sign in
+ *  with Google" here, not a generic retry. */
 export type ImportGoogleCalendarResponse =
   | { status: "ok"; events: CalendarEvent[] }
   | { status: "not_connected" }

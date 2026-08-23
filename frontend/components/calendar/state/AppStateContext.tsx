@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, ReactNode } from "react";
 import type {
   CalendarEvent,
   FlexibleTask,
@@ -17,6 +17,7 @@ import { useScheduleRuns, type UseScheduleRunsResult } from "./useScheduleRuns";
 import { useUpdateSchedule } from "./useUpdateSchedule";
 import { useGoogleImport } from "./useGoogleImport";
 import { useNote, type UseNoteResult } from "./useNote";
+import { useDemoLimits } from "./useDemoLimits";
 
 interface AppState
   extends UseCategoriesResult,
@@ -25,10 +26,9 @@ interface AppState
     UseScheduledSessionsResult,
     UseScheduleRunsResult,
     UseNoteResult {
-  /** True for the anonymous "Try Demo" session (Ticket 10) - real solver,
-   *  real (if disposable) account, but a few things read this to disable
-   *  what doesn't make sense without a real identity (Google Calendar
-   *  import) and to show the demo-mode banner. */
+  /** True during the "Try Demo" session. It's a real account and real
+   *  solver, just disposable - this flag turns off things that need a real
+   *  identity (like Google Calendar import) and shows the demo banner. */
   isDemo: boolean;
   today: Date;
   updatingSchedule: boolean;
@@ -65,9 +65,9 @@ interface AppState
   toast: string | null;
   showToast: (msg: string) => void;
 
-  /** Errors/system problems, persisted in the Status area until dismissed -
-   *  unlike showToast, which is for transient action confirmations that are
-   *  fine to disappear on their own. */
+  /** Errors and system problems - stay in the Status area until dismissed.
+   *  (showToast is different: it's for quick confirmations that can just
+   *  disappear.) */
   systemMessages: SystemMessage[];
   reportSystemError: (text: string) => void;
   dismissSystemMessage: (id: string) => void;
@@ -88,13 +88,6 @@ interface ConfirmDialogState {
   confirmLabel: string;
   danger: boolean;
   onConfirm: () => void;
-}
-
-function removeFromSet(set: Set<string>, id: string): Set<string> {
-  if (!set.has(id)) return set;
-  const next = new Set(set);
-  next.delete(id);
-  return next;
 }
 
 const AppStateContext = createContext<AppState | undefined>(undefined);
@@ -204,57 +197,17 @@ export function AppStateProvider({
 
   const closeConfirmDialog = useCallback(() => setConfirmDialog(null), []);
 
-  // Ticket 10 ("Try Demo"): tracks which event/task ids this anonymous
-  // session itself created, so the cap only counts what the visitor
-  // actually added - not the pre-seeded starter content - and deleting one
-  // frees a slot back up, matching how a real limit should feel. Events and
-  // flexible tasks are tracked (and capped) separately, each up to 5, so
-  // adding one kind never eats into the other's allowance. Empty and unused
-  // for a real (non-demo) session.
-  const [demoAddedEventIds, setDemoAddedEventIds] = useState<Set<string>>(new Set());
-  const [demoAddedTaskIds, setDemoAddedTaskIds] = useState<Set<string>>(new Set());
-  const MAX_DEMO_ADDED_ITEMS = 5;
+  const demoLimits = useDemoLimits({
+    isDemo,
+    createEventReal: eventsApi.createEvent,
+    deleteEventReal: eventsApi.deleteEvent,
+    createFlexibleTaskReal: flexibleTasksApi.createFlexibleTask,
+    reportSystemError,
+  });
 
-  const createEventDemoCapped = useCallback(
-    async (input: Omit<CalendarEvent, "id">): Promise<CalendarEvent | null> => {
-      if (isDemo && demoAddedEventIds.size >= MAX_DEMO_ADDED_ITEMS) {
-        reportSystemError(`Demo is limited to ${MAX_DEMO_ADDED_ITEMS} added events - sign in for unlimited.`);
-        return null;
-      }
-      const created = await eventsApi.createEvent(input);
-      if (created && isDemo) setDemoAddedEventIds((cur) => new Set(cur).add(created.id));
-      return created;
-    },
-    [isDemo, demoAddedEventIds, eventsApi, reportSystemError],
-  );
-
-  const deleteEventDemoTracked = useCallback(
-    async (id: string): Promise<boolean> => {
-      const success = await eventsApi.deleteEvent(id);
-      if (success && isDemo) setDemoAddedEventIds((cur) => removeFromSet(cur, id));
-      return success;
-    },
-    [eventsApi, isDemo],
-  );
-
-  const createFlexibleTaskDemoCapped = useCallback(
-    async (
-      input: Omit<FlexibleTask, "id" | "schedulingStatus" | "createdAt" | "updatedAt">,
-    ): Promise<FlexibleTask | null> => {
-      if (isDemo && demoAddedTaskIds.size >= MAX_DEMO_ADDED_ITEMS) {
-        reportSystemError(`Demo is limited to ${MAX_DEMO_ADDED_ITEMS} added tasks - sign in for unlimited.`);
-        return null;
-      }
-      const created = await flexibleTasksApi.createFlexibleTask(input);
-      if (created && isDemo) setDemoAddedTaskIds((cur) => new Set(cur).add(created.id));
-      return created;
-    },
-    [isDemo, demoAddedTaskIds, flexibleTasksApi, reportSystemError],
-  );
-
-  // Wrap deleteCategory so it cascades into event/task/session removal (kept
-  // here since it needs all four hooks' setters - none of them should know
-  // about the others).
+  // Wraps deleteCategory so it also removes that category's events/tasks/
+  // sessions. Lives here because it needs all four hooks' setters, and none
+  // of those hooks should know about each other.
   const deleteCategoryCascade = useCallback(
     (id: string): string => {
       const removedId = categoriesApi.deleteCategory(id);
@@ -266,26 +219,25 @@ export function AppStateProvider({
     [categoriesApi, eventsApi, flexibleTasksApi, scheduledSessionsApi],
   );
 
-  // Same reasoning as deleteCategoryCascade: deleting a flexible task must
-  // also drop its own already-placed sessions from local state, or an
-  // orphaned session block lingers on the grid until the next reload.
+  // Same idea as deleteCategoryCascade: deleting a task must also remove its
+  // already-placed sessions, or an orphaned block stays on the grid until
+  // the next reload.
   const deleteFlexibleTaskCascade = useCallback(
     async (id: string): Promise<boolean> => {
       const success = await flexibleTasksApi.deleteFlexibleTask(id);
       if (success) {
         scheduledSessionsApi.removeScheduledSessionsByTask(id);
-        if (isDemo) setDemoAddedTaskIds((cur) => removeFromSet(cur, id));
+        demoLimits.untrackTask(id);
       }
       return success;
     },
-    [flexibleTasksApi, scheduledSessionsApi, isDemo],
+    [flexibleTasksApi, scheduledSessionsApi, demoLimits],
   );
 
-  // Recategorizing a task must also update its already-placed sessions'
-  // local categoryId - a DB trigger (migration 0009) keeps the server-side
-  // denormalized copy in sync, but the currently-open tab's own local state
-  // needs the same update or the grid keeps showing the old color/visibility
-  // until the next reload.
+  // Changing a task's category must also update its already-placed sessions'
+  // local categoryId. A DB trigger (migration 0009) keeps the server copy in
+  // sync, but this tab's own local state needs the same update, or the grid
+  // shows the old color until reload.
   const updateFlexibleTaskCascade = useCallback(
     async (id: string, patch: Partial<FlexibleTask>): Promise<boolean> => {
       const success = await flexibleTasksApi.updateFlexibleTask(id, patch);
@@ -302,10 +254,10 @@ export function AppStateProvider({
     ...categoriesApi,
     deleteCategory: deleteCategoryCascade,
     ...eventsApi,
-    createEvent: createEventDemoCapped,
-    deleteEvent: deleteEventDemoTracked,
+    createEvent: demoLimits.createEvent,
+    deleteEvent: demoLimits.deleteEvent,
     ...flexibleTasksApi,
-    createFlexibleTask: createFlexibleTaskDemoCapped,
+    createFlexibleTask: demoLimits.createFlexibleTask,
     deleteFlexibleTask: deleteFlexibleTaskCascade,
     updateFlexibleTask: updateFlexibleTaskCascade,
     ...scheduledSessionsApi,

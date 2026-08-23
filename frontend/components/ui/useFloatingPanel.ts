@@ -7,24 +7,23 @@ interface FloatingPanelOptions {
   anchorRect: DOMRect;
   onClose: () => void;
   align?: "left" | "right";
-  /** Applied as the panel's own CSS width. Omit to let it size to content
-   *  (e.g. a min-width in its stylesheet) - matchWidth overrides this. */
+  /** Sets the panel's own CSS width. Leave it out to size to content
+   *  instead - matchWidth overrides this option either way. */
   width?: number;
-  /** Use the anchor's own width instead of `width` or content-sizing - lines
+  /** Uses the anchor's width instead of `width` or content-sizing. Lines
    *  the panel up exactly under the field it opened from. */
   matchWidth?: boolean;
   gap?: number;
 }
 
 /**
- * Shared positioning + outside-click/escape-close behavior for a small
- * floating panel anchored to a trigger element (Popover, ContextMenu, and
- * anything else built on either). Opens below the anchor by default,
- * right-aligned to it - matching a native <select>'s usual behavior - but
- * flips whichever direction has more room once the panel's real size is
- * known. Measured post-mount via useLayoutEffect (fires before paint, so
- * there's no visible flicker even though the very first computed position
- * is a placeholder).
+ * Shared positioning, outside-click, and Escape-close logic for a floating
+ * panel next to a trigger element. Popover, ContextMenu, and anything built
+ * on them use this.
+ * It opens below the anchor by default, right-aligned like a native
+ * select, and flips to the other side if that has more room.
+ * Size is measured after mount, so there's no flicker even though the
+ * first position is just a placeholder.
  */
 export function useFloatingPanel({
   anchorRect,

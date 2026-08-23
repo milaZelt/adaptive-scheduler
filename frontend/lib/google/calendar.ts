@@ -14,13 +14,11 @@ export interface GoogleCalendarEvent {
 const EVENTS_LIST_URL = "https://www.googleapis.com/calendar/v3/calendars/primary/events";
 const PAGE_SIZE = 250;
 
-/** Fetches every event Google returns for the [timeMinISO, timeMaxISO)
- *  window on the user's primary calendar, following pagination to the
- *  end. A ~2-week import window will likely never need more than one
- *  page, but silently truncating on that guess is worse than the few
- *  extra lines pagination takes. singleEvents=true asks Google to expand
- *  recurring events into individual instances itself, instead of this app
- *  parsing RRULEs. */
+/** Fetches every event Google has in the [timeMinISO, timeMaxISO) window,
+ *  paging through all results. A 2-week import probably fits in one page,
+ *  but paginating is safer than guessing and silently missing events. Also
+ *  uses singleEvents=true, so Google expands recurring events for us
+ *  instead of us parsing RRULEs. */
 export async function fetchGoogleCalendarEvents(
   accessToken: string,
   timeMinISO: string,
@@ -51,8 +49,8 @@ export async function fetchGoogleCalendarEvents(
       nextPageToken?: string;
     };
 
-    // Cancelled instances aren't expected back from a plain (non-sync-token)
-    // list query, but excluded defensively rather than trusted implicitly.
+    // Google shouldn't send cancelled events here, but we skip them anyway
+    // just in case.
     for (const item of body.items ?? []) {
       if (item.status !== "cancelled") events.push(item);
     }

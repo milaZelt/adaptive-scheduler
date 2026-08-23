@@ -22,8 +22,8 @@ interface UseUpdateScheduleParams {
 
 export interface UseUpdateScheduleResult {
   updatingSchedule: boolean;
-  /** Non-null while the blocking "what happened with these?" prompt needs
-   *  an answer before Update Schedule can actually run. */
+  /** Not null while the "what happened with these sessions?" prompt is
+   *  blocking Update Schedule from running. */
   resolvePrompt: UnresolvedSessionInfo[] | null;
   closeResolvePrompt: () => void;
   updateSchedule: () => Promise<void>;
@@ -46,15 +46,15 @@ export function useUpdateSchedule({
 
     let response: UpdateScheduleResponse;
     try {
-      // Computed fresh right now, not derived from the `today` Date above -
-      // that one is fixed at mount time (see AppStateContext), so a tab left
-      // open since this morning would otherwise report a stale hour.
+      // Computed fresh right now, not from `today` above (that's fixed when
+      // the tab loads). Otherwise a tab left open since this morning would
+      // report the wrong hour.
       const now = new Date();
       const res = await fetch("/api/update-schedule", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // Client's own resolved local date/time - the server never infers a
-        // timezone or computes its own "today"/"now".
+        // Uses the browser's own clock - the server never guesses the time
+        // zone.
         body: JSON.stringify({
           today: toISODate(today),
           nowHour: now.getHours() + now.getMinutes() / 60,

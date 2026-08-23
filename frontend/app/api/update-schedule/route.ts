@@ -36,9 +36,9 @@ interface SolverBusyInterval {
   end_hour: number;
 }
 
-/** SolverBusyInterval plus a display name - the solver itself never sees the
- *  title (stripped before the request payload), but explainability needs to
- *  name what it was. */
+/** SolverBusyInterval plus a display name. The solver never sees the title
+ *  itself (we strip it before sending), but we need it to explain the
+ *  schedule later. */
 interface NamedBusyInterval extends SolverBusyInterval {
   title: string;
 }
@@ -75,36 +75,42 @@ function errorResponse(message: string, status: number) {
   return NextResponse.json({ status: "error", message } satisfies UpdateScheduleResponse, { status });
 }
 
-// Anonymous ("Try Demo", Ticket 10) callers only - real accounts have no
-// limit here. In-memory, per server process - resets on restart, doesn't
-// share state across instances. Proportionate for this project's real
-// scale, not production-grade infra.
+// Only applies to anonymous "Try Demo" users - real accounts have no limit.
+// Stored in memory per server, so it resets on restart. Fine for this
+// project's scale.
 //
-// A generous ceiling, not a tight budget: seed_demo_content (migration
-// 0014) seeds 6 flexible tasks, and the client separately caps the
-// visitor's own additions at 5 - legitimate demo usage tops out well under
-// this. It exists to stop a scripted/direct-API abuse case, not to pinch a
-// real demo session, so it's set with real headroom above that legitimate
-// max rather than tracking it exactly (which is exactly what silently broke
-// once already, when the seed data grew and this constant didn't).
+// A generous ceiling, not a tight budget - real demo usage stays well under
+// 20 (6 seeded tasks + 5 more the client allows). This just stops scripted
+// abuse. Keep it with headroom instead of tracking the real max exactly -
+// that's what broke once before, when the seed data grew and this number
+// didn't.
 const DEMO_MAX_TASKS = 20;
 const DEMO_RATE_LIMIT = 5;
 const DEMO_RATE_WINDOW_MS = 60_000;
 const demoRequestLog = new Map<string, number[]>();
 
-function isDemoRateLimited(userId: string): boolean {
+// Records this request and checks the limit - not a pure check, it also
+// writes to demoRequestLog (hence the name). Also drops any other user's
+// fully-expired entry first, so the map doesn't grow forever while the
+// server keeps running.
+function recordAndCheckDemoRateLimit(userId: string): boolean {
   const now = Date.now();
+  for (const [id, timestamps] of demoRequestLog) {
+    if (timestamps.every((t) => now - t >= DEMO_RATE_WINDOW_MS)) {
+      demoRequestLog.delete(id);
+    }
+  }
+
   const recent = (demoRequestLog.get(userId) ?? []).filter((t) => now - t < DEMO_RATE_WINDOW_MS);
   recent.push(now);
   demoRequestLog.set(userId, recent);
   return recent.length > DEMO_RATE_LIMIT;
 }
 
-// Each step below either returns the data the next step needs, or a
-// ready-to-return NextResponse (error or, for the pre-solve gate, "blocked")
-// - the caller just checks `instanceof NextResponse` and returns it as-is,
-// so POST itself reads as a single top-to-bottom sequence of named steps
-// rather than one long procedural function.
+// Each step function below returns either the data the next step needs, or a
+// ready NextResponse (error, or "blocked"). The caller just checks
+// `instanceof NextResponse` and returns it as-is - so POST reads as a simple
+// top-to-bottom list of steps.
 
 async function parseToday(request: Request): Promise<NextResponse | { today: Date; nowHour: number }> {
   let body: unknown;
@@ -123,9 +129,9 @@ async function parseToday(request: Request): Promise<NextResponse | { today: Dat
   return { today: todayDate, nowHour };
 }
 
-/** Non-null return means "stop and return this" - either a DB error, or a
- *  successful "blocked" response listing what needs resolving first. Null
- *  means nothing unresolved was found and the caller should proceed. */
+/** A non-null return means "stop and send this back" - either a DB error,
+ *  or a "blocked" response listing what needs resolving first. Null means
+ *  nothing was unresolved, so the caller should continue. */
 async function checkForUnresolvedPastSessions(
   supabase: SupabaseClient,
   userId: string,
@@ -159,11 +165,11 @@ async function checkForUnresolvedPastSessions(
   return NextResponse.json({ status: "blocked", unresolvedSessions } satisfies UpdateScheduleResponse);
 }
 
-/** Fixed events, expanded per horizon day into the flat busy-interval shape
- *  the solver expects, plus each interval's source title (kept only for
- *  explainability's use after the solve - the solver's own request payload
- *  strips it back out, see POST). All-day events block the whole day, not
- *  just the solver's own 8AM-11PM window - "all day" means all day. */
+/** Expands fixed events into the flat busy-interval shape the solver wants,
+ *  one per horizon day. Each interval keeps its title too, but only for
+ *  explaining the schedule later - the actual solver request strips titles
+ *  back out. All-day events block the entire day, not just the solver's
+ *  normal hours. */
 async function gatherBusyIntervals(
   supabase: SupabaseClient,
   userId: string,
@@ -197,11 +203,11 @@ interface EligibleTasks {
   resolvedStatuses: Map<string, SchedulingStatus>;
 }
 
-/** Every flexible task, sorted into "resolved without the solver" (overdue,
- *  out-of-horizon, or already fully covered by completed sessions) versus
- *  "send to the solver" - remaining_minutes for the latter already deducts
- *  every completed session for that task, regardless of date (see the
- *  comment at its use below for why "regardless of date" matters). */
+/** Sorts every flexible task into two groups: resolved without the solver
+ *  (overdue, outside the horizon, or already fully done), and sent to the
+ *  solver. For the second group, remaining_minutes already subtracts every
+ *  completed session for that task, no matter its date (see the comment
+ *  below for why that matters). */
 async function gatherEligibleTasks(
   supabase: SupabaseClient,
   userId: string,
@@ -236,21 +242,19 @@ async function gatherEligibleTasks(
       resolvedStatuses.set(task.id, "overdue");
       continue;
     }
-    // Guarded, not assumed: flexible_tasks.deadline is constrained to the
-    // horizon by both the creation-time UX and a DB CHECK constraint, but a
-    // row that somehow violates that shouldn't silently corrupt a solve.
+    // We check this instead of assuming it. The UI and a DB constraint both
+    // keep deadlines inside the horizon, but if a row ever breaks that rule,
+    // it shouldn't quietly corrupt a solve.
     if (deadlineDayOffset >= PLANNING_HORIZON_DAYS) {
       resolvedStatuses.set(task.id, "couldnt_fit");
       continue;
     }
 
     const requiredMinutes = Math.round(task.estimateHours * 60);
-    // Not date-scoped to "before today": every session below is about to be
-    // deleted and replaced by this same run (the RPC's delete range covers
-    // the whole horizon, today included), so a session completed earlier
-    // today would otherwise have its progress silently dropped - any
-    // completed session for this task represents real, already-spent time
-    // no matter which horizon window placed it.
+    // Not limited to "before today" - this run is about to delete and
+    // replace every session in the whole horizon, including today. So a
+    // session completed earlier today still counts; skipping it would
+    // silently lose real progress.
     const completedMinutes = allSessions
       .filter((s) => s.taskId === task.id && s.completionStatus === "completed")
       .reduce((sum, s) => sum + Math.round((s.end - s.start) * 60), 0);
@@ -282,8 +286,8 @@ async function gatherEligibleTasks(
   return { solverTasks, allTasks, resolvedStatuses };
 }
 
-/** Fully stateless (see backend/api) - an empty task list never needs to
- *  reach the solver at all. */
+/** Fully stateless (see backend/api). An empty task list skips the solver
+ *  call entirely. */
 async function callSolver(
   solverTasks: SolverTaskIn[],
   busyIntervals: SolverBusyInterval[],
@@ -314,12 +318,11 @@ async function callSolver(
   }
 
   if (!solverRes.ok) {
-    // FastAPI's own HTTPException path (e.g. "solver failed to converge")
-    // never throws, so there's no traceback in the backend's logs for
-    // this - the only place the actual reason exists is the response body
-    // itself, which nothing was reading. Surfaced both server-side (in
-    // case it's noisy/technical) and to the client (this is a solo-user
-    // tool, not multi-tenant - there's no one else to hide it from).
+    // FastAPI's HTTPException (e.g. "solver failed to converge") doesn't
+    // throw, so the backend logs have no trace of it - the real reason only
+    // lives in the response body. We log it here and also send it to the
+    // client, since this is a solo-user tool with no one else to hide it
+    // from.
     const bodyText = await solverRes.text().catch(() => "");
     let detail = bodyText;
     try {
@@ -351,11 +354,11 @@ interface SessionToInsert {
   placement_reason: PlacementReason;
 }
 
-/** Derived entirely from the already-validated `all_sessions` (grouped by
- *  task), not from task_results[x].sessions - validating one representation
- *  of the response and persisting from a different one would defeat the
- *  point of treating the response as untrusted. Also fills in the final
- *  scheduled/couldn't-fit status for every task the solver actually saw. */
+/** Built only from the already-validated `all_sessions` (grouped by task),
+ *  never from task_results[x].sessions - validating one version of the
+ *  response and then saving a different one would defeat the point of
+ *  validating at all. Also sets the final scheduled/couldn't-fit status for
+ *  every task the solver saw. */
 function buildSessionsToInsert(
   solverResult: SolverResponse,
   allTasks: FlexibleTask[],
@@ -378,10 +381,10 @@ function buildSessionsToInsert(
     resolvedStatuses.set(taskId, result.scheduled ? "scheduled" : "couldnt_fit");
     if (!result.scheduled) continue;
 
-    // Trivial to compute here (just this task's own tier + the already-in-
-    // scope full task list) - blockedBy needs cross-session adjacency data
-    // that isn't available until every task's sessions exist, so that part
-    // is filled in afterward by attachBlockedByReasons.
+    // Easy to compute here, from just this task's tier and the full task
+    // list already in scope. blockedBy is different - it needs data from
+    // every task's sessions, which don't all exist yet, so
+    // attachBlockedByReasons fills that in later.
     const otherTierTasksCount = allTasks.filter((t) => t.priority === task.priority && t.id !== task.id).length;
 
     const orderedSessions = (sessionsByTask.get(taskId) ?? []).sort(
@@ -409,24 +412,22 @@ function buildSessionsToInsert(
   return sessionsToInsert;
 }
 
-// Loose enough to survive minor rounding in decimal-hour arithmetic, tight
-// enough to only credit something that's plausibly THE reason (the solver's
-// own 30-min padding rule) rather than just "somewhere earlier that day."
-// This is a display heuristic for explainability, not a scheduling rule -
-// being a few minutes off only makes an explanation slightly less precise;
-// the persisted schedule itself never depends on this value.
+// Loose enough to survive small rounding errors, tight enough to only credit
+// something that's plausibly the real reason (the solver's 30-min padding
+// rule) - not just anything earlier that day. This is only used to explain
+// the schedule to the user; it never affects the actual schedule.
 const BLOCKED_BY_WINDOW_HOURS = 32 / 60;
 
 interface BlockerCandidate {
   title: string;
   start: number;
   end: number;
-  gap: number; // minutes (as decimal hours) between this candidate's end and the session's start
+  gap: number; // decimal hours between this candidate's end and the session's start
 }
 
-/** Appends {title, start, end} as a blockedBy candidate iff it ends within
- *  BLOCKED_BY_WINDOW_HOURS before sessionStart - the one check shared by
- *  both candidate sources below (a fixed event, or another task's session). */
+/** Adds {title, start, end} as a blockedBy candidate if it ends close enough
+ *  before sessionStart. Shared by both candidate sources below (a fixed
+ *  event, or another task's session). */
 function addBlockerCandidateIfClose(
   candidates: BlockerCandidate[],
   sessionStart: number,
@@ -440,11 +441,11 @@ function addBlockerCandidateIfClose(
   }
 }
 
-/** For each inserted session, finds the nearest same-day thing (a fixed
- *  event, or another task's session also being inserted this run) ending
- *  close enough before its start to plausibly be why it couldn't land
- *  earlier, and fills in placement_reason.blockedBy. Mutates in place -
- *  sessionsToInsert is a freshly-built array with no other owners. */
+/** For each session, finds the nearest same-day thing that ends right
+ *  before it starts (a fixed event, or another task's session) - that's the
+ *  likely reason it couldn't be placed earlier. Fills in
+ *  placement_reason.blockedBy. Mutates sessionsToInsert in place; nothing
+ *  else holds a reference to it yet, so that's safe. */
 function attachBlockedByReasons(
   sessionsToInsert: SessionToInsert[],
   namedBusyIntervals: NamedBusyInterval[],
@@ -461,14 +462,13 @@ function attachBlockedByReasons(
       addBlockerCandidateIfClose(candidates, session.start_time, nbi.title, nbi.start_hour, nbi.end_hour);
     }
     for (const other of sessionsToInsert) {
-      // Not the same session, and not another split of the same task - two
-      // sessions of one task being padding-separated is real (the solver
-      // does apply padding there too), but naming a task as its own
-      // blocker reads as confusing self-reference rather than an explanation.
+      // Skip the same session, and skip other sessions of the same task. The
+      // solver does pad between two sessions of one task, but naming a task
+      // as its own blocker would just be confusing, not helpful.
       if (other === session || other.task_id === session.task_id || other.date !== session.date) continue;
-      // Practically unreachable (sessionsToInsert's task_ids all come from
-      // allTasks/taskById in buildSessionsToInsert) - kept grammatically
-      // safe anyway, since this gets prefixed with "your" at display time.
+      // Should never actually happen (every task_id here comes from
+      // allTasks). Kept as a safe fallback anyway, since this text gets
+      // shown to the user as "your ___".
       const otherTitle = taskById.get(other.task_id)?.title ?? "other session";
       addBlockerCandidateIfClose(candidates, session.start_time, otherTitle, other.start_time, other.end_time);
     }
@@ -479,9 +479,9 @@ function attachBlockedByReasons(
   }
 }
 
-/** The transactional delete-then-insert-then-status-update - a single RPC
- *  call so it's atomic, since the JS Supabase client has no multi-statement
- *  transaction support of its own. */
+/** Deletes, inserts, and updates statuses - all as one RPC call, so it's
+ *  atomic. The JS Supabase client can't do multi-statement transactions on
+ *  its own. */
 async function persistScheduleUpdate(
   supabase: SupabaseClient,
   userId: string,
@@ -519,10 +519,10 @@ async function fetchFreshState(supabase: SupabaseClient, userId: string): Promis
   ]);
 
   if (!scheduleRunRow) {
-    // apply_schedule_update always upserts schedule_runs in the same
-    // transaction as the writes above, which already succeeded - a missing
-    // row here means something is genuinely wrong, not a case to paper over
-    // with a fabricated timestamp.
+    // apply_schedule_update always saves a schedule_runs row in the same
+    // transaction as the writes above, which already succeeded. So a
+    // missing row here means something is really wrong - we shouldn't paper
+    // over it with a fake timestamp.
     return errorResponse("Schedule saved, but couldn't confirm the run time. Please refresh.", 500);
   }
 
@@ -542,7 +542,7 @@ export async function POST(request: Request) {
   const user = await getAuthenticatedUser(supabase);
   if (!user) return errorResponse("Not authenticated.", 401);
 
-  if (user.is_anonymous && isDemoRateLimited(user.id)) {
+  if (user.is_anonymous && recordAndCheckDemoRateLimit(user.id)) {
     return errorResponse("Too many requests - please wait a moment and try again.", 429);
   }
 
@@ -553,19 +553,19 @@ export async function POST(request: Request) {
 
   const namedBusyIntervals = await gatherBusyIntervals(supabase, user.id, horizon);
   if (namedBusyIntervals instanceof NextResponse) return namedBusyIntervals;
-  // The solver's own request/validation only need day/start/end - title is
-  // explainability-only, added after the solve (see attachBlockedByReasons).
+  // The solver only needs day/start/end - title is only for explaining the
+  // schedule later (see attachBlockedByReasons).
   const busyIntervals: SolverBusyInterval[] = namedBusyIntervals.map(({ day, start_hour, end_hour }) => ({
     day,
     start_hour,
     end_hour,
   }));
 
-  // Block whatever's already elapsed today, so a session never gets placed
-  // earlier today than the actual current moment (e.g. running this at 3pm
-  // shouldn't place anything at 10am today). Deliberately not part of
-  // namedBusyIntervals/explainability above - "it's already 3pm" doesn't
-  // need a "why this slot" callout the way a real competing event does.
+  // Blocks whatever time has already passed today, so nothing gets placed
+  // earlier than right now (e.g. running this at 3pm shouldn't place
+  // anything at 10am). Kept separate from namedBusyIntervals on purpose -
+  // "it's already 3pm" doesn't need a "why this slot" explanation the way a
+  // real event does.
   if (nowHour > 0) {
     busyIntervals.push({ day: 0, start_hour: 0, end_hour: nowHour });
   }
@@ -631,9 +631,9 @@ function validateSolverResponse(
     byDay.get(session.day)!.push({ start: session.start_hour, end: session.end_hour });
   }
 
-  // Cross-check the two representations of the same result agree - a task
-  // marked scheduled=true must actually have session(s) in all_sessions,
-  // and vice versa, rather than trusting either one independently.
+  // Checks that the two parts of the response agree: a task marked
+  // scheduled=true must actually have sessions in all_sessions, and vice
+  // versa. Don't trust either one alone.
   for (const [taskId, taskResult] of Object.entries(result.task_results)) {
     const hasSessions = (sessionCountByTask.get(taskId) ?? 0) > 0;
     if (taskResult.scheduled && !hasSessions) {
@@ -644,8 +644,8 @@ function validateSolverResponse(
     }
   }
 
-  // Basic overlap sanity check - not a re-implementation of the solver's
-  // 30-min padding rule, just "nothing directly overlaps," as a backstop.
+  // Basic overlap check, just a backstop - not a full copy of the solver's
+  // 30-min padding rule, just "nothing directly overlaps."
   for (const [day, sessions] of byDay.entries()) {
     const sorted = [...sessions].sort((a, b) => a.start - b.start);
     for (let i = 1; i < sorted.length; i++) {

@@ -8,16 +8,15 @@ interface UseGoogleImportParams {
   today: Date;
   setEvents: (events: CalendarEvent[]) => void;
   showToast: (msg: string) => void;
-  /** Persisted in the Status area until dismissed - both failure cases,
-   *  same convention as useUpdateSchedule. */
+  /** Shown in the Status area until dismissed, same as useUpdateSchedule. */
   reportSystemError: (text: string) => void;
 }
 
 export interface UseGoogleImportResult {
   importingGoogleCalendar: boolean;
-  /** True once a Google Calendar import has succeeded this session - shown
-   *  as a persistent Status-area line (StatusList.tsx), not a toast, since
-   *  the toast disappears before the user might even notice it. */
+  /** True after a Google Calendar import succeeds this session. Shown as a
+   *  line in the Status area (StatusList.tsx), not a toast - a toast could
+   *  disappear before the user even notices it. */
   googleCalendarImported: boolean;
   importGoogleCalendar: () => Promise<void>;
 }

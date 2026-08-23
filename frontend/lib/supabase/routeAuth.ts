@@ -1,10 +1,8 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 
-/** The one auth check shared by every Route Handler under app/api/. Returns
- *  null instead of a response on failure - unlike dal.ts's verifySession
- *  (for Server Components, where redirect() makes sense), a POST/GET route
- *  needs its own typed error response. That differs per route, so building
- *  one here would just get thrown away by callers with their own shape. */
+/** The one auth check shared by every API route. Returns null on failure,
+ *  not a response - unlike dal.ts's verifySession (which can just redirect
+ *  since it's for pages), each route needs its own error response shape. */
 export async function getAuthenticatedUser(supabase: SupabaseClient): Promise<User | null> {
   const {
     data: { user },

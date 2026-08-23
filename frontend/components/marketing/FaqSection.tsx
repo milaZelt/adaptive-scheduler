@@ -28,7 +28,7 @@ export default function FaqSection() {
     <section id="faq" className={styles.faq}>
       <div className={styles.inner}>
         <span className={styles.tag}>FAQ</span>
-        <h2 className={styles.title}>Questions & Answers </h2>
+        <h2 className={styles.title}>Questions & Answers</h2>
         <div className={styles.list}>
           {faqs.map((faq) => (
             <details key={faq.question} className={styles.item}>

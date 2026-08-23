@@ -39,7 +39,7 @@ def total_minutes(sessions):
 
 
 # ---------------------------------------------------------------------------
-# Graceful infeasibility: one impossible task must not sink the whole solve.
+# One impossible task must not break the whole solve.
 # ---------------------------------------------------------------------------
 
 
@@ -59,7 +59,7 @@ def test_over_capacity_task_reports_unscheduled_others_still_placed():
 
 
 # ---------------------------------------------------------------------------
-# Objective: priority is duration-agnostic.
+# Priority wins regardless of task length.
 # ---------------------------------------------------------------------------
 
 
@@ -73,8 +73,8 @@ def test_high_priority_short_task_wins_contested_slot_over_medium_long_task():
         "reading", priority="Medium", deadline_day=0, remaining_minutes=90,
         splittable=True, min_session_minutes=30, max_session_minutes=60,
     )
-    # medium_long could use both gaps (30+60=90) if high_short didn't exist,
-    # but they both need the 60-min gap - genuine contention.
+    # medium_long could use both gaps (30+60=90) if high_short weren't
+    # there. But both tasks need the same 60-min gap - real contention.
 
     result = solve([high_short, medium_long], busy_intervals=busy_intervals, horizon_days=1)
 
@@ -109,8 +109,9 @@ def test_equal_priority_earlier_deadline_wins_contested_slot():
 
 
 def test_equal_priority_equal_deadline_shorter_task_preferred():
-    # Exactly one 180-min block free; short(60) and long(180) both fit alone,
-    # not together (60+180 > 180) - genuine contention, same deadline.
+    # Exactly one 180-min block is free. short(60) and long(180) each fit
+    # alone, but not together (60+180 > 180) - real contention, same
+    # deadline.
     busy_intervals = [busy(0, 8.0, 19.5)]  # padded [7:30,20:00] -> leaves [20:00,23:00]=180min
     short_task = task("gym", priority="Medium", deadline_day=0, remaining_minutes=60, splittable=False)
     long_task = task("thesis", priority="Medium", deadline_day=0, remaining_minutes=180, splittable=False)
@@ -122,23 +123,25 @@ def test_equal_priority_equal_deadline_shorter_task_preferred():
 
 
 # ---------------------------------------------------------------------------
-# Full lexicographic chain in one scenario: count, then urgency (both within
-# High), then complete dominance over Medium for the same resource. The
-# tests above each isolate one transition, but none prove the tiers compose
-# correctly end to end. Stage 3 (shorter-task) isn't re-proven here - it's
-# already covered by test_equal_priority_equal_deadline_shorter_task_preferred,
-# and cramming all three stages plus cross-tier dominance into one scenario
-# would need much more contrived numbers for no added rigor.
+# This test checks the full chain in one scenario: count, then urgency
+# (both within High), then High completely blocking Medium from the same
+# slot. The tests above only check one step at a time - none of them
+# prove the steps work correctly together.
+#
+# Stage 3 (shorter-task) is not tested again here - it's already covered
+# by test_equal_priority_equal_deadline_shorter_task_preferred. Adding it
+# here too would need much more complex numbers, without testing anything
+# new.
 # ---------------------------------------------------------------------------
 
 
 def test_full_chain_count_then_urgency_then_locks_out_medium_entirely():
-    # Every day is fully blocked except a single 60-min slot on day0. H1 and
-    # H2 both need that exact slot (nowhere else is open anywhere in the
-    # 6-day horizon), so only one High task can be scheduled - urgency must
-    # then pick H1 (due day0) over H2 (due day5). M1 wants the identical
-    # slot and is Medium priority - it must come away with nothing, even
-    # though it would have fit perfectly had either High task not existed.
+    # Every day is fully blocked except one 60-min slot on day0. H1 and H2
+    # both need that exact slot - nowhere else is open in the whole 6-day
+    # horizon - so only one High task can be scheduled. Urgency then picks
+    # H1 (due day0) over H2 (due day5). M1 wants the same slot but is
+    # Medium priority, so it gets nothing - even though it would have fit
+    # fine if neither High task existed.
     busy_intervals = [busy(0, 8.0, 21.5)]  # leaves [22:00,23:00] on day0
     busy_intervals += [busy(d, 8.0, 23.0) for d in range(1, 6)]  # every other day fully blocked
 
@@ -150,12 +153,12 @@ def test_full_chain_count_then_urgency_then_locks_out_medium_entirely():
         [h1_due_soon, h2_due_later, m1_same_slot], busy_intervals=busy_intervals, horizon_days=6
     )
 
-    # Stage 1 (count) + stage 2 (urgency): only one High task can fit: the
-    # sooner-deadline one.
+    # Stage 1 (count) + stage 2 (urgency): only one High task fits - the
+    # one with the sooner deadline.
     assert result.task_results["h1"].scheduled is True
     assert result.task_results["h2"].scheduled is False
-    # Cross-tier dominance: Medium never gets a look-in at High's resource,
-    # even though m1 is individually just as capable of using that slot.
+    # Medium never gets a chance at High's slot, even though m1 could
+    # have used it just as well.
     assert result.task_results["m1"].scheduled is False
 
 
@@ -166,12 +169,11 @@ def test_full_chain_count_then_urgency_then_locks_out_medium_entirely():
 
 
 def test_earliest_slot_preferred_when_all_higher_stages_are_tied():
-    # Two isolated gaps for the *same single task*: an early one (8:00-9:00)
-    # and a large late one (15:00-23:00). Nothing else competes for either,
-    # so stages 1-4 (count, urgency, total minutes, session count) are
-    # completely indifferent between them - whichever gap gets picked, the
-    # task itself is identical either way. Only stage 5 can be responsible
-    # for preferring the early gap over the late one.
+    # Two separate gaps for the *same single task*: an early one
+    # (8:00-9:00) and a big late one (15:00-23:00). Nothing else competes
+    # for either gap, so stages 1-4 (count, urgency, minutes, session
+    # count) don't care which one gets picked - the task is the same
+    # either way. Only stage 5 can be the reason the early gap wins.
     busy_intervals = [busy(0, 9.5, 14.5)]  # padded [9:00,15:00] -> gaps [8:00,9:00] and [15:00,23:00]
     only_task = task("gym", priority="High", deadline_day=0, remaining_minutes=60, splittable=False)
 
@@ -209,9 +211,9 @@ def test_all_or_nothing_no_partial_placement_when_insufficient_capacity():
 
 
 def test_padding_makes_a_would_otherwise_fit_slot_infeasible():
-    # Raw gap between the two busy blocks is exactly 30 min - would fit a
-    # 30-min task with zero padding, but 30-min padding on each side of each
-    # busy interval consumes the entire gap.
+    # The raw gap between the two busy blocks is exactly 30 min. It would
+    # fit a 30-min task with no padding, but 30-min padding on each side
+    # eats up the whole gap.
     busy_intervals = [busy(0, 8.0, 9.75), busy(0, 10.25, 23.0)]
     small_task = task("quick", priority="Medium", deadline_day=0, remaining_minutes=30, splittable=False)
 
@@ -222,10 +224,10 @@ def test_padding_makes_a_would_otherwise_fit_slot_infeasible():
 
 def test_padded_zone_around_fixed_event_never_used_for_placement():
     busy_intervals = [busy(0, 10.0, 11.0)]
-    # Big enough to force use of most of the day, but not so big it's infeasible:
-    # free capacity ignoring padding = 14h - 1h = 13h = 780min; with padding the
-    # event effectively removes [9.5,11.5] (2h), leaving 12h = 720min - plenty
-    # for a 600-min splittable task.
+    # Big enough to use most of the day, but not so big it's infeasible.
+    # Free time ignoring padding = 14h - 1h = 13h = 780min. With padding,
+    # the event removes [9.5,11.5] (2h), leaving 12h = 720min - plenty for
+    # a 600-min splittable task.
     big_task = task(
         "study", priority="High", deadline_day=0, remaining_minutes=600,
         splittable=True, min_session_minutes=30, max_session_minutes=120,
@@ -268,10 +270,10 @@ def test_minimum_gap_enforced_between_two_flexible_sessions():
 
 
 def test_sessions_never_placed_outside_the_8am_to_11pm_window():
-    # 300 min comfortably fits an open 900-min window with room for 30-min
-    # gaps between sessions - large enough to force real placement, not so
-    # large it approaches the window's actual capacity limit (irrelevant to
-    # what this test checks).
+    # 300 min fits easily in the open 900-min window, with room for 30-min
+    # gaps between sessions. Big enough to force real placement, but far
+    # from the window's actual limit - that limit isn't what this test
+    # checks.
     big_task = task(
         "study", priority="High", deadline_day=0, remaining_minutes=300,
         splittable=True, min_session_minutes=30, max_session_minutes=120,
@@ -286,7 +288,8 @@ def test_sessions_never_placed_outside_the_8am_to_11pm_window():
 
 
 # ---------------------------------------------------------------------------
-# Split mechanics: min/max session length respected; non-splittable = 1 session.
+# Split rules: min/max session length is respected. A non-splittable task
+# always gets exactly 1 session.
 # ---------------------------------------------------------------------------
 
 
@@ -318,9 +321,9 @@ def test_non_splittable_task_produces_exactly_one_session():
 
 
 def test_splitting_prefers_fewer_longer_sessions_over_more_fragments():
-    # 180 min, splittable 30-120: could be e.g. 1.5h+1.5h or 1h+1h+1h etc.
-    # Objective tier 4 should prefer the fewest sessions (2, using close to
-    # the max length) over needlessly fragmenting into 3+.
+    # 180 min, splittable 30-120: could split as 1.5h+1.5h, or 1h+1h+1h,
+    # etc. Stage 4 should prefer the fewest sessions (2, close to max
+    # length) over splitting into 3+ pieces for no reason.
     splittable_task = task(
         "reading", priority="High", deadline_day=0, remaining_minutes=180,
         splittable=True, min_session_minutes=30, max_session_minutes=120,
@@ -348,23 +351,25 @@ def test_overlapping_fixed_events_do_not_break_the_solve():
 
 
 # ---------------------------------------------------------------------------
-# Time granularity: every placement aligns to the 15-min grid.
+# Every placement must align to the 15-min grid.
 #
-# This must be a *feasibility* test, not just a "does the output look
-# aligned" test - an earlier version kept passing even with the alignment
-# constraint deleted, because CP-SAT happened to land on clean values by
-# chance. A test that passes whether or not the bug exists proves nothing.
-# Here the gap between two busy intervals is sized to fit the task at
-# exactly one non-15-aligned position - so alignment isn't just a
-# preference the solver might stumble into, it's the difference between
-# feasible and not.
+# This has to be a *feasibility* test, not just a "does the output look
+# aligned" test. An earlier version kept passing even after the alignment
+# rule was deleted, because CP-SAT happened to land on clean values by
+# luck. A test that passes whether or not the bug exists proves nothing.
+#
+# Here, the gap between two busy intervals is sized so the task fits in
+# exactly one position, and that position is not 15-min aligned. So
+# alignment isn't just a preference the solver might stumble into - it's
+# the actual difference between feasible and not.
 # ---------------------------------------------------------------------------
 
 
 def test_task_that_only_fits_a_misaligned_slot_is_left_unscheduled():
-    # Free gap (after padding) is exactly [566, 596] minutes-since-midnight
-    # = 9:26-9:56 - 30 minutes wide, matching the task exactly, but neither
-    # boundary is a multiple of 15 (566 % 15 == 11, 596 % 15 == 11).
+    # The free gap (after padding) is exactly [566, 596] minutes-since-
+    # midnight, i.e. 9:26-9:56. That's 30 minutes wide, matching the task
+    # exactly - but neither boundary is a multiple of 15 (566 % 15 == 11,
+    # 596 % 15 == 11).
     busy_intervals = [
         busy(0, 480 / 60, 536 / 60),  # 8:00-8:56, padded end = 566
         busy(0, 626 / 60, 1380 / 60),  # 10:26-23:00, padded start = 596
@@ -375,9 +380,9 @@ def test_task_that_only_fits_a_misaligned_slot_is_left_unscheduled():
 
     result = solve([only_fits_misaligned], busy_intervals=busy_intervals, horizon_days=1)
 
-    # The only slot that satisfies duration+window+padding is [566,596], which
-    # the 15-min grid constraint correctly forbids - so this must come back
-    # unscheduled, not silently placed at 9:26.
+    # The only slot that satisfies duration+window+padding is [566,596].
+    # The 15-min grid rule correctly blocks it, so this task must come
+    # back unscheduled - not silently placed at 9:26.
     assert result.task_results["quick"].scheduled is False
 
 
@@ -410,29 +415,29 @@ def test_empty_task_list_returns_empty_result():
 
 
 # ---------------------------------------------------------------------------
-# A stage that only reaches FEASIBLE (not proven OPTIMAL) within its time
-# budget must still be accepted, not treated as a failure - real task counts
-# are far larger than every fixture above, and this is what production
-# actually hit with real user data: a stage timing out on the *proof* step
-# while still holding a perfectly good, checked-feasible solution. Confirmed
-# to actually discriminate, not just pass: with STAGE_TIME_LIMIT_S patched
-# down for this fixture, the pre-fix check (status != OPTIMAL) raises on
-# this exact scenario; the fix accepts it.
+# A stage that only reaches FEASIBLE (not proven OPTIMAL) in time must
+# still be accepted, not treated as a failure. Real task counts are much
+# bigger than any fixture above, and this is exactly what happened in
+# production: a stage timed out on the *proof* step while it already had
+# a good, feasible solution.
 #
-# This is inherently a timing-based test - there's no reliable way to force
-# CP-SAT's default parallel search to land on FEASIBLE-not-OPTIMAL other
-# than forcing single-threaded search, which would no longer represent what
-# production actually runs. 0.3s originally worked in isolation but flaked
-# under real machine load (other test/build tooling running at the same
-# time). 3.0s has held reliably with a lot more margin, and is still fast
-# enough not to slow the suite down.
+# This test is confirmed to actually catch the bug, not just pass by
+# luck: with STAGE_TIME_LIMIT_S patched down, the old check
+# (status != OPTIMAL) raises on this exact scenario, and the fix accepts
+# it.
+#
+# This test depends on timing, so it can't be made fully deterministic -
+# the only way to reliably force FEASIBLE-not-OPTIMAL is single-threaded
+# search, which isn't what production actually runs. 0.3s worked alone
+# but flaked under real machine load. 3.0s has been reliable with more
+# margin, and is still fast enough to not slow down the test suite.
 # ---------------------------------------------------------------------------
 
 
 def test_feasible_but_unproven_optimal_stage_result_is_accepted():
-    # 10 splittable tasks across a full 14-day horizon with daily contention
-    # - enough combinatorial depth that proving optimality takes a bit of
-    # real search, even though CP-SAT finds a complete, valid solution fast.
+    # 10 splittable tasks across a full 14-day horizon, with daily
+    # contention. Complex enough that proving optimality takes real
+    # search time, even though CP-SAT finds a full, valid solution fast.
     tasks = [
         task(
             f"t{i}", priority="High", deadline_day=13, remaining_minutes=180,
@@ -445,10 +450,10 @@ def test_feasible_but_unproven_optimal_stage_result_is_accepted():
     with patch("solver.engine.STAGE_TIME_LIMIT_S", 3.0):
         result = solve(tasks, busy_intervals=busy_intervals, horizon_days=14)
 
-    # Not asserting a specific placement (a FEASIBLE-not-OPTIMAL result is
-    # allowed to differ run-to-run within CP-SAT's search) - just that the
-    # call succeeded at all and returned a complete, structurally valid
-    # result, which is exactly what the pre-fix code refused to do.
+    # We don't check the exact placement, since a FEASIBLE-not-OPTIMAL
+    # result can differ between runs. We only check that the call
+    # succeeded and returned a complete, valid result - which is exactly
+    # what the old code refused to do.
     assert len(result.task_results) == 10
     for r in result.task_results.values():
         assert r.scheduled is True

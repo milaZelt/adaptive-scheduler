@@ -24,12 +24,10 @@ const MINUTE_OPTIONS: SelectOption[] = [
   { value: "45", label: "45 min" },
 ];
 
-/** decimal hours <-> separate hours/minutes form fields, snapping to the
- *  nearest 15-min option - storage stays a single decimal number throughout
- *  (FlexibleTask.estimateHours/sessionMin/sessionMax, DB numeric(5,2)),
- *  this only changes how the value is entered. Snapping matters for editing
- *  older rows saved before this UI existed, which may not land on a
- *  15-min boundary. */
+/** Converts decimal hours to separate hour/minute fields, snapped to the
+ *  nearest 15 minutes. Storage always stays decimal - this only changes
+ *  how the value is entered. Snapping matters for old rows that may not
+ *  land on a 15-min boundary. */
 function decimalToHM(decimal: number): { h: string; m: string } {
   const totalMinutes = Math.round(decimal * 60);
   const h = Math.floor(totalMinutes / 60);
@@ -41,10 +39,10 @@ function hmToDecimal(h: string, m: string): number {
   return (h === "" ? 0 : Number(h)) + (m === "" ? 0 : Number(m)) / 60;
 }
 
-/** Hours/minutes form state for one duration field, seeded from a possibly-
- *  absent prefill decimal. Estimate/min-session/max-session all need
- *  exactly this same pair of useState calls - a hook rather than three
- *  near-identical inline blocks. */
+/** Hours/minutes state for one duration field, starting from an optional
+ *  prefill value. Estimate, min-session, and max-session all need the same
+ *  two useState calls, so this is a hook instead of three copies of the
+ *  same code. */
 function useDurationField(
   initialDecimal: number | null | undefined,
 ): [string, string, (v: string) => void, (v: string) => void] {
@@ -95,7 +93,8 @@ interface FlexibleEventFormProps {
 }
 
 export default function FlexibleEventForm({ prefill, onClose }: FlexibleEventFormProps) {
-  const { today, categories, showToast, createFlexibleTask, updateFlexibleTask } = useAppState();
+  const { today, categories, showToast, reportSystemError, createFlexibleTask, updateFlexibleTask } =
+    useAppState();
   const isEdit = !!prefill;
   const [saving, setSaving] = useState(false);
 
@@ -115,11 +114,9 @@ export default function FlexibleEventForm({ prefill, onClose }: FlexibleEventFor
   const [priority, setPriority] = useState<Priority | "">(prefill?.priority ?? "");
   const [categoryId, setCategoryId] = useState(prefill?.categoryId ?? selectableCategories[0]?.id ?? "");
 
-  // A deadline beyond the rolling planning window isn't tracked long-term.
-  // Rather than collect a second, parallel "near-term" allocation in a
-  // shadow panel, the Deadline and Time Estimate fields below are always
-  // what actually gets saved - an out-of-window date just blocks Save
-  // until the user adjusts it.
+  // Deadlines past the planning window aren't tracked long-term. Instead
+  // of adding separate fields for that, Save just stays blocked until the
+  // user picks a date inside the window.
   const todayISO = toISODate(today);
   const horizonEndDate = addDays(today, PLANNING_HORIZON_DAYS - 1);
   const horizonEndISO = toISODate(horizonEndDate);
@@ -156,8 +153,8 @@ export default function FlexibleEventForm({ prefill, onClose }: FlexibleEventFor
       description: description.trim() || undefined,
     };
 
-    // Editing marks the schedule stale, so reset the status too - a
-    // previously-placed task shouldn't keep showing a now-outdated one.
+    // Editing a task marks the schedule stale, so this resets its status
+    // too. Otherwise it would keep showing an old, outdated placement.
     const success = isEdit
       ? await updateFlexibleTask(prefill!.id, { ...payload, schedulingStatus: "not_yet_scheduled" })
       : (await createFlexibleTask(payload)) !== null;
@@ -166,6 +163,8 @@ export default function FlexibleEventForm({ prefill, onClose }: FlexibleEventFor
     if (success) {
       showToast(isEdit ? "Task updated" : "Task created");
       onClose();
+    } else {
+      reportSystemError("Couldn't save that task. Please try again.");
     }
   }
 

@@ -20,9 +20,9 @@ function errorResponse(message: string, status: number) {
   );
 }
 
-// Same shape as update-schedule's own step functions: each either returns
-// the data the next step needs, or a ready-to-return NextResponse, so POST
-// itself stays a single top-to-bottom sequence of named steps.
+// Same pattern as update-schedule's step functions: each one returns either
+// the data the next step needs, or a ready NextResponse. That keeps POST a
+// simple top-to-bottom list of steps.
 
 async function parseToday(request: Request): Promise<NextResponse | Date> {
   let body: unknown;
@@ -36,13 +36,11 @@ async function parseToday(request: Request): Promise<NextResponse | Date> {
   return todayDate;
 }
 
-/** Finds the category imports should land in, creating it the first time.
- *  Found by its own is_google_import flag, not by name - a user renaming
- *  "Google Calendar" still gets the next import there instead of a second
- *  one getting silently recreated. The same flag is also what
- *  FlexibleEventForm.tsx uses client-side to keep this category out of new
- *  task creation, since nothing created locally can actually be "added
- *  into" Google. */
+/** Finds the category imports go into, creating it the first time. We look
+ *  it up by its is_google_import flag, not by name - so if the user renames
+ *  "Google Calendar", imports still land there instead of creating a
+ *  duplicate. FlexibleEventForm.tsx uses the same flag to hide this
+ *  category from new task creation. */
 async function resolveImportCategoryId(
   supabase: SupabaseClient,
   userId: string,
@@ -76,11 +74,10 @@ async function resolveImportCategoryId(
   return created.id as string;
 }
 
-/** Wipes this user's previously-imported events within the horizon and
- *  inserts the freshly-fetched set - a full replace, not a diff, since
- *  Google is always the source of truth for its own events and a plain
- *  (non-sync-token) list query can't tell "deleted on Google" apart from
- *  "just outside this page" any other way. */
+/** Deletes this user's old imported events in the horizon, then inserts the
+ *  fresh ones. It's a full replace, not a diff - a plain list query can't
+ *  tell "deleted on Google" apart from "just not on this page", so Google's
+ *  current list is always treated as the full truth. */
 async function replaceGoogleEvents(
   supabase: SupabaseClient,
   userId: string,
@@ -131,11 +128,10 @@ export async function POST(request: Request) {
   if (categoryId instanceof NextResponse) return categoryId;
 
   const horizon = getPlanningHorizon(todayDate);
-  // Padded a day on each side so no in-window event is lost to a
-  // timezone-boundary mismatch between this server's own clock and the
-  // event's local time - eventConversion.ts re-clips to the real horizon
-  // using each event's own literal date, so padding can only pull in a
-  // little extra raw data, never lose real data.
+  // Padded one day on each side, so a timezone mismatch between the server
+  // and the event can't cut off a real event. eventConversion.ts re-clips to
+  // the real horizon afterward, so this padding can only pull in a bit of
+  // extra data, never lose real data.
   const timeMinISO = `${toISODate(addDays(horizon.days[0], -1))}T00:00:00Z`;
   const timeMaxISO = `${toISODate(addDays(horizon.days[horizon.days.length - 1], 2))}T00:00:00Z`;
 

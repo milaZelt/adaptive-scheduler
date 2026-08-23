@@ -1,12 +1,12 @@
 """Compares the real CP-SAT solver against the greedy baseline
-(greedy_baseline.py) across a set of deliberately scarce, contested-
-capacity scenarios, to produce an honest, measured answer to "does the
-solver actually do better than the obvious first attempt, and by how
-much?" - rather than asserting it from theory.
+(greedy_baseline.py). Uses scenarios where capacity is deliberately
+tight, so tasks really compete for the same time. This gives a real,
+measured answer to "does the solver actually beat the obvious first
+try, and by how much?" instead of just assuming it.
 
-Same safety posture as bench_solver.py: single CPU core, a tight per-
-stage time limit, small scenario sizes. The greedy side costs nothing
-(pure Python, no solving) - only the real-solver calls are capped.
+Same safety limits as bench_solver.py: one CPU core, a tight time limit
+per stage, small scenarios. The greedy side is free (plain Python, no
+solving) - only the real-solver calls are capped.
 
 Run: python -m benchmarks.compare_baseline [--quick]
 (from backend/, with the venv active)
@@ -17,35 +17,27 @@ import json
 from pathlib import Path
 from unittest.mock import patch
 
-from ortools.sat.python import cp_model
-
+from benchmarks._solver_patch import force_single_worker
 from benchmarks.greedy_baseline import solve_greedy
 from solver.constants import PRIORITY_ORDER
 from solver.engine import solve
 from solver.types import BusyInterval, FlexibleTaskInput
 
-# Same single-worker, tight-time-limit posture as bench_solver.py - see
-# that file's comments for why. Applied here independently since this
-# script can run standalone.
-STAGE_TIME_LIMIT_S = 3.0
-_original_cp_solver_init = cp_model.CpSolver.__init__
-
-
-def _single_worker_init(self, *args, **kwargs):
-    _original_cp_solver_init(self, *args, **kwargs)
-    self.parameters.num_search_workers = 1
-
-
-cp_model.CpSolver.__init__ = _single_worker_init
+# Same single-worker, tight-time-limit setup as bench_solver.py - see
+# _solver_patch.py for why. Both scripts use the same function, so they
+# can't drift out of sync on how it's applied.
+COMPARE_STAGE_TIME_LIMIT_S = 3.0
+force_single_worker()
 
 HORIZON_DAYS = 7
 
 
 def make_scarce_scenario(seed: int, task_count: int) -> tuple[list[FlexibleTaskInput], list[BusyInterval]]:
-    """A deliberately tight scenario: most of each day is busy, so real
-    tasks genuinely compete for the little free capacity left - unlike
-    bench_solver.py's scenarios (built for timing, not contention).
-    Deterministic per seed, not random, so a run is reproducible."""
+    """A scenario made tight on purpose: most of each day is busy, so
+    tasks really compete for the little free time left. This differs
+    from bench_solver.py's scenarios, which are built for timing, not
+    for contention. It's deterministic per seed, not random, so a run
+    can be repeated exactly."""
     tasks = []
     for i in range(task_count):
         priority = PRIORITY_ORDER[(seed + i) % len(PRIORITY_ORDER)]
@@ -63,8 +55,8 @@ def make_scarce_scenario(seed: int, task_count: int) -> tuple[list[FlexibleTaskI
                 splittable=splittable,
             )
         )
-    # Busy 8AM-8PM every day, leaving only 8-9AM and 8-11PM free (4h/day)
-    # instead of bench_solver.py's 12h/day - genuine scarcity.
+    # Busy 9AM-8PM every day. That leaves only 8-9AM and 8-11PM free
+    # (4h/day), instead of bench_solver.py's 12h/day - real scarcity.
     busy = [BusyInterval(day=d, start_hour=9.0, end_hour=20.0) for d in range(HORIZON_DAYS)]
     return tasks, busy
 
@@ -78,7 +70,7 @@ def compare_one(seed: int, task_count: int) -> dict:
     tasks, busy = make_scarce_scenario(seed, task_count)
 
     greedy_result = solve_greedy(tasks, busy, horizon_days=HORIZON_DAYS)
-    with patch("solver.engine.STAGE_TIME_LIMIT_S", STAGE_TIME_LIMIT_S):
+    with patch("solver.engine.STAGE_TIME_LIMIT_S", COMPARE_STAGE_TIME_LIMIT_S):
         solver_result = solve(tasks=tasks, busy_intervals=busy, horizon_days=HORIZON_DAYS)
 
     return {

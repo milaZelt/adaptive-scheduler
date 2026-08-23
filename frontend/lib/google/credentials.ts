@@ -11,16 +11,16 @@ interface StoredCredentialsRow {
   access_token_expires_at: string | null;
 }
 
-/** Captures the Google refresh token at sign-in time (auth/callback) - the
- *  only moment Supabase's session carries it, so it must be saved now or
- *  it's gone for good. Doesn't store the short-lived access token issued
- *  alongside it: Supabase's session doesn't expose that token's real
- *  expiry (expires_in/expires_at describe Supabase's own JWT, not
- *  Google's), so caching it here would mean guessing a TTL. Leaving
- *  access_token unset means the next getValidGoogleAccessToken call just
- *  refreshes for real, which is always correct. On a re-login, an
- *  already-cached access token is left untouched, since upsert only
- *  overwrites the columns listed here. */
+/** Saves the Google refresh token when the user signs in. This is the only
+ *  time Supabase gives us this token, so we have to save it now or lose it.
+ *
+ *  We don't save the access token here - Supabase doesn't tell us its real
+ *  expiry time, so we'd have to guess. Leaving it unset just means the next
+ *  getValidGoogleAccessToken call will refresh for a real one, which always
+ *  works.
+ *
+ *  On a re-login, this won't erase an already-cached access token, since
+ *  upsert only touches the columns listed here. */
 export async function saveGoogleCredentials(
   supabase: SupabaseClient,
   userId: string,
@@ -34,13 +34,11 @@ export async function saveGoogleCredentials(
   if (error) throw error;
 }
 
-/** Returns a Google Calendar access token ready to use, refreshing it
- *  against Google's token endpoint first if the cached one is missing or
- *  close to expiry. Supabase only ever refreshes its own session JWT,
- *  never the provider's token - this fills that gap. Returns null if this
- *  user never connected a Google account, or if Google rejects the
- *  refresh token (revoked or expired). Either way, the caller should
- *  prompt reconnection, not retry. */
+/** Returns a ready-to-use Google access token, refreshing it first if it's
+ *  missing or close to expiry. Supabase only refreshes its own session
+ *  token, not Google's, so this function fills that gap. Returns null if
+ *  the user never connected Google or Google rejected the refresh token -
+ *  either way, the caller should ask them to reconnect, not retry. */
 export async function getValidGoogleAccessToken(
   supabase: SupabaseClient,
   userId: string,
@@ -75,9 +73,9 @@ export async function getValidGoogleAccessToken(
     }),
   });
 
-  // Covers a revoked/expired refresh token (Google responds invalid_grant)
-  // alongside any other failure - none of it is retryable without the user
-  // reconnecting, so the caller just sees "no token available" either way.
+  // Covers a revoked/expired token (Google's invalid_grant) and any other
+  // failure. None of these are fixable by retrying, so we just return null
+  // either way.
   if (!response.ok) return null;
 
   const refreshed = (await response.json()) as { access_token: string; expires_in: number };

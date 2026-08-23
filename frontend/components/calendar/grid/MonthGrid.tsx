@@ -3,7 +3,7 @@
 import React from "react";
 import { useAppState } from "../state/AppStateContext";
 import { getMonthGridDays, sameDay } from "@/lib/calendar/dateUtils";
-import { shadeColor } from "@/lib/calendar/colorUtils";
+import { getCategoryColors } from "@/lib/calendar/colorUtils";
 import { DOW_SHORT } from "@/lib/calendar/constants";
 import styles from "./Calendar.module.css";
 
@@ -51,32 +51,26 @@ export default function MonthGrid({ anchor }: MonthGridProps) {
               <div className={styles.monthDate}>{d.getDate()}</div>
               <div className={styles.monthDots}>
                 {dayEvents.map((e) => {
-                  const cat = getCategory(e.categoryId);
+                  const { bg, border } = getCategoryColors(getCategory(e.categoryId));
                   return (
                     <button
                       key={e.id}
                       className={styles.monthDot}
                       title={e.title}
-                      style={{
-                        background: cat ? cat.color : "#cccccc",
-                        borderColor: cat ? shadeColor(cat.color, -30) : "#999999",
-                      }}
+                      style={{ background: bg, borderColor: border }}
                       onClick={() => openEventDetail(e)}
                     />
                   );
                 })}
                 {daySessions.map((s) => {
-                  const cat = getCategory(s.categoryId);
+                  const { bg, border } = getCategoryColors(getCategory(s.categoryId));
                   const taskTitle = getFlexibleTaskById(s.taskId)?.title ?? "Untitled task";
                   return (
                     <button
                       key={s.id}
                       className={`${styles.monthDot} ${styles.sessionDot}`}
                       title={taskTitle}
-                      style={{
-                        background: cat ? cat.color : "#cccccc",
-                        borderColor: cat ? shadeColor(cat.color, -30) : "#999999",
-                      }}
+                      style={{ background: bg, borderColor: border }}
                       onClick={() => openSessionDetail(s)}
                     />
                   );

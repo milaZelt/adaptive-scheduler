@@ -10,15 +10,12 @@ export interface PlanningHorizon {
 }
 
 /**
- * The rolling planning window, anchored to `today`. Used for both the
- * solve-request range and the Update Schedule delete-scope range - one
- * function, not two separate date computations that could drift apart.
+ * The planning window, starting from `today`. Both the solver and the
+ * schedule-delete range use this same function, so the dates can't drift
+ * apart.
  *
- * `today` must be the caller's own resolved local date - FastAPI never
- * infers a timezone, and neither does this function. The Route Handler
- * that calls this gets `today` as an ISO string from the client (the
- * browser's own `AppStateContext.today`, already resolved from the user's
- * real local clock), never computed server-side.
+ * `today` always comes from the browser's own clock, sent by the client -
+ * the server never guesses the time zone.
  */
 export function getPlanningHorizon(today: Date): PlanningHorizon {
   const days = Array.from({ length: PLANNING_HORIZON_DAYS }, (_, i) => addDays(today, i));
@@ -31,11 +28,10 @@ export function getPlanningHorizon(today: Date): PlanningHorizon {
 }
 
 /**
- * 0-indexed day offset of `dateISO` from the horizon's first day, matching
- * the solver's own day-0-through-day-13 convention. Negative means before
- * the horizon (overdue). Callers should still check the upper bound, not
- * assume it - see the comment above `flexible_tasks.deadline` in migration
- * 0003.
+ * Day offset of `dateISO` from the horizon's first day (0-indexed, same as
+ * the solver). Negative means it's before the horizon, i.e. overdue.
+ * Callers should still check the upper bound too - see the comment on
+ * `flexible_tasks.deadline` in migration 0003.
  */
 export function dayOffsetInHorizon(horizon: PlanningHorizon, dateISO: string): number {
   const target = parseLocalDate(dateISO);
@@ -46,11 +42,9 @@ export function dayOffsetInHorizon(horizon: PlanningHorizon, dateISO: string): n
 }
 
 /**
- * Pulls `today` (the client's resolved local date - see above) out of a
- * parsed request body. Shared by every Route Handler that needs it; each
- * one wraps this in its own JSON-parsing try/catch and builds its own
- * typed error response, since those differ per route. Returns null for
- * anything malformed instead of throwing.
+ * Gets `today` (the client's local date) out of a request body. Every
+ * route uses this and wraps it in its own try/catch for its own error
+ * response - this just returns null if it's missing or malformed.
  */
 export function parseRequestToday(body: unknown): Date | null {
   const today = (body as { today?: unknown })?.today;
@@ -60,12 +54,10 @@ export function parseRequestToday(body: unknown): Date | null {
 }
 
 /**
- * Pulls `nowHour` (the client's current time of day, as a decimal hour -
- * e.g. 15.5 for 3:30pm - resolved from the user's real local clock, same
- * discipline as `today` above) out of a parsed request body. Lets Update
- * Schedule know not just which day is "today" but which part of it has
- * already happened, so a flexible session never gets placed earlier today
- * than the actual current moment. Returns null for anything malformed.
+ * Gets `nowHour` (the client's current time as a decimal hour, e.g. 15.5
+ * for 3:30pm) out of a request body. This tells Update Schedule which part
+ * of today has already passed, so it never places a session earlier than
+ * right now. Returns null if malformed.
  */
 export function parseRequestNowHour(body: unknown): number | null {
   const nowHour = (body as { nowHour?: unknown })?.nowHour;

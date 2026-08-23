@@ -1,21 +1,20 @@
 """Core CP-SAT scheduling engine for flexible tasks.
 
-The objective is lexicographic, not a single weighted formula: tiers are
-solved in strict priority order (High, then Medium, then Low), and each
-tier's outcome is locked in before the next tier is solved. Within one tier:
+We solve priority tiers one at a time: all High tasks first, then Medium,
+then Low. Each tier's result is locked in before the next tier runs, so a
+lower priority can never change a higher priority's outcome.
 
-  1. Maximize the *count* of fully-completed tasks.
-  2. Among ties, prefer the more urgent (earlier-deadline) tasks.
-  3. Among remaining ties, prefer shorter tasks (frees more capacity for
-     other completions).
-  4. Among remaining ties, prefer fewer/longer sessions per task over more,
-     shorter fragments.
-  5. Among remaining ties, prefer the earliest available placement.
+Within one tier, we break ties in this order:
 
-This runs as a sequence of solves on one shared model: each stage sets an
-objective, solves it to proven optimality, then locks that value in as a
-constraint before the next stage runs. A lower-priority stage can never
-change a higher-priority stage's outcome, even indirectly.
+  1. Schedule as many tasks as possible.
+  2. Prefer tasks with an earlier deadline.
+  3. Prefer shorter tasks (frees up room for more tasks to fit).
+  4. Prefer fewer, longer sessions over more short fragments.
+  5. Prefer the earliest open time slot.
+
+How this works: we solve the same model multiple times in a row. Each
+solve sets one goal, solves it, then locks in that result as a
+constraint before solving the next goal.
 """
 
 import logging
@@ -41,10 +40,9 @@ STAGE_TIME_LIMIT_S = 10.0
 
 
 class _Candidate:
-    """One candidate session slot for a task. A splittable task gets several
-    of these to choose from - any number can end up present. A
-    non-splittable task gets exactly one, always its full remaining
-    duration when present."""
+    """One possible session slot for a task. A splittable task gets several
+    of these to pick from - any number can be used. A non-splittable task
+    gets just one, always its full remaining duration."""
 
     def __init__(self, task: FlexibleTaskInput, index: int, model: cp_model.CpModel):
         self.index = index
@@ -58,25 +56,25 @@ class _Candidate:
         self.presence = model.NewBoolVar(f"present_{name}")
         self.day = model.NewIntVar(0, task.deadline_day, f"day_{name}")
         self.duration = model.NewIntVar(lo, hi, f"dur_{name}")
-        # Callers must pass durations already aligned to SNAP_MIN (matches
-        # the frontend's 15-min drag/resize grid). Enforced here so a bad
-        # duration fails loudly (infeasible) instead of landing off-grid.
+        # Duration must be a multiple of SNAP_MIN (the frontend's 15-min
+        # grid). This makes a bad duration fail loudly here instead of
+        # silently landing off-grid.
         model.AddModuloEquality(0, self.duration, SNAP_MIN)
 
         # hour_start is minutes-since-midnight on whichever day this lands on.
         self.hour_start = model.NewIntVar(WINDOW_START_MIN, WINDOW_END_MIN, f"hs_{name}")
         model.AddModuloEquality(0, self.hour_start, SNAP_MIN)
-        # Only enforced when present, so an unused candidate (e.g. one whose
-        # duration can't fit the window) doesn't make the whole model
-        # infeasible just by existing.
+        # Only applies if this candidate is actually used. That way an
+        # unused candidate (like one too long to fit the window) can't
+        # break the whole model just by existing.
         model.Add(self.hour_start + self.duration <= WINDOW_END_MIN).OnlyEnforceIf(self.presence)
 
         horizon_minutes = (task.deadline_day + 1) * MINUTES_PER_DAY
         self.abs_start = model.NewIntVar(0, horizon_minutes, f"abs_start_{name}")
         model.Add(self.abs_start == self.day * MINUTES_PER_DAY + self.hour_start)
-        # Domain must be large enough for abs_start + duration even when
-        # this candidate isn't present - the window constraint above only
-        # applies when it is.
+        # This range must be big enough for abs_start + duration even when
+        # this candidate isn't used - the window check above only applies
+        # when it is.
         self.abs_end = model.NewIntVar(0, horizon_minutes + hi, f"abs_end_{name}")
         model.Add(self.abs_end == self.abs_start + self.duration)
 
@@ -84,11 +82,11 @@ class _Candidate:
             self.abs_start, self.duration, self.abs_end, self.presence, f"iv_{name}"
         )
 
-        # Padded shadow interval, expanded PADDING_MIN/2 on each side, used
-        # only by the flex-vs-flex AddNoOverlap call below. If the padded
-        # shadows don't overlap, the real sessions have a gap of at least
-        # PADDING_MIN. Applies to every pair of flexible sessions, including
-        # two sessions from the same split task.
+        # A padded copy of this interval, bigger by PADDING_MIN/2 on each
+        # side. Used only by the no-overlap check below: if two padded
+        # copies don't overlap, the real sessions have a gap of at least
+        # PADDING_MIN. This applies to every pair of flexible sessions,
+        # even two sessions from the same split task.
         half = PADDING_MIN // 2
         pad_lo = -half
         pad_hi = horizon_minutes + half
@@ -102,9 +100,9 @@ class _Candidate:
             self.padded_start, self.padded_duration, self.padded_end, self.presence, f"piv_{name}"
         )
 
-        # 0 when not present, so summing this across a tier for the stage-5
-        # tie-break isn't thrown off by unused candidates' otherwise-
-        # unconstrained abs_start values.
+        # 0 when this candidate isn't used. This keeps unused candidates
+        # from throwing off the stage-5 tie-break sum, since their
+        # abs_start would otherwise be unconstrained.
         self.effective_start = model.NewIntVar(0, horizon_minutes, f"effstart_{name}")
         model.Add(self.effective_start == self.abs_start).OnlyEnforceIf(self.presence)
         model.Add(self.effective_start == 0).OnlyEnforceIf(self.presence.Not())
@@ -118,11 +116,9 @@ def _num_candidates(task: FlexibleTaskInput) -> int:
     return max(1, min(MAX_CANDIDATE_SESSIONS, needed))
 
 
-def _solve_and_lock(
-    model: cp_model.CpModel, solver: cp_model.CpSolver, terms: list, maximize: bool
-) -> cp_model.CpSolver:
+def _solve_and_lock(model: cp_model.CpModel, solver: cp_model.CpSolver, terms: list, maximize: bool) -> None:
     if not terms:
-        return solver
+        return
     expr = sum(terms)
     if maximize:
         model.Maximize(expr)
@@ -130,22 +126,20 @@ def _solve_and_lock(
         model.Minimize(expr)
     solver.parameters.max_time_in_seconds = STAGE_TIME_LIMIT_S
     status = solver.Solve(model)
-    # FEASIBLE means CP-SAT found a valid, usable solution but ran out of
-    # time proving it's the best one. We accept it anyway: real task counts
-    # are much bigger than the fixtures this time limit was tuned on, so
-    # treating "found a good schedule" the same as "found nothing" would
-    # break Update Schedule on exactly the inputs that matter most. CP-SAT
-    # usually finds a strong solution fast and spends the rest of its time
-    # proving optimality, so a FEASIBLE result is normally optimal or close
-    # to it - and later stages only ever narrow this value further, never
-    # worse, so an imperfect stage 1 can't make later stages worse either.
+    # FEASIBLE means CP-SAT found a working solution but ran out of time
+    # proving it's the best one. We still accept it. Real task lists are
+    # much bigger than our test fixtures, so rejecting FEASIBLE would break
+    # Update Schedule for exactly the users who need it most. CP-SAT
+    # usually finds a strong solution fast, so FEASIBLE is normally close
+    # to optimal anyway. Also, later stages only tighten the value
+    # further, never make it worse - so an imperfect stage 1 can't hurt
+    # later stages.
     if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
         raise RuntimeError(f"solver stage found no solution (status={solver.StatusName(status)})")
     if status == cp_model.FEASIBLE:
         logger.info("solver stage settled for FEASIBLE, not proven OPTIMAL, within %ss", STAGE_TIME_LIMIT_S)
     value = round(solver.ObjectiveValue())
     model.Add(expr == value)
-    return solver
 
 
 @dataclass
@@ -156,10 +150,9 @@ class _TaskVars:
 
 
 def _build_task_vars(task: FlexibleTaskInput, model: cp_model.CpModel) -> _TaskVars:
-    """One task's candidate sessions, plus its own `scheduled` bool. True if
-    the present candidates add up to exactly the task's full
-    remaining_minutes; false if none are present. All-or-nothing, enforced
-    here."""
+    """One task's candidate sessions, plus a `scheduled` bool. True if the
+    used candidates add up to the task's full remaining_minutes, false if
+    none are used. All-or-nothing, enforced right here."""
     candidates = [_Candidate(task, i, model) for i in range(_num_candidates(task))]
 
     scheduled = model.NewBoolVar(f"scheduled_{task.id}")
@@ -179,8 +172,9 @@ def _build_task_vars(task: FlexibleTaskInput, model: cp_model.CpModel) -> _TaskV
 
 
 def _add_flex_vs_flex_constraint(model: cp_model.CpModel, all_candidates: list[_Candidate]) -> None:
-    """Uniform minimum gap between any two flexible sessions (including two
-    sessions of the same split task), via their padded shadow intervals."""
+    """Keeps a minimum gap between any two flexible sessions, including two
+    sessions from the same split task. Uses the padded shadow intervals to
+    do it."""
     if all_candidates:
         model.AddNoOverlap([c.padded_interval for c in all_candidates])
 
@@ -190,9 +184,9 @@ def _add_flex_vs_fixed_constraints(
     all_candidates: list[_Candidate],
     busy_intervals: list[BusyInterval],
 ) -> None:
-    """Keeps every flexible candidate padded-clear of every fixed/Google
-    busy interval. Fixed/Google intervals are never checked against each
-    other, only against flexible candidates."""
+    """Keeps every flexible candidate a padded gap away from every fixed or
+    Google busy interval. Fixed/Google intervals are never checked against
+    each other, only against flexible ones."""
     for c in all_candidates:
         for i, busy in enumerate(busy_intervals):
             busy_start = busy.day * MINUTES_PER_DAY + round(busy.start_hour * 60)
@@ -223,10 +217,10 @@ def solve(
 
     solver = cp_model.CpSolver()
 
-    # Optional benchmarking hook - records how long each stage took. No-op
-    # when stage_timings is None, so production pays nothing for this.
-    # Defined once; priority is passed in since it's the only thing that
-    # changes per call.
+    # Optional hook for benchmarking - records how long each stage takes.
+    # Does nothing if stage_timings is None, so production pays no cost.
+    # Defined here so it can reuse model, solver, and stage_timings
+    # directly.
     def _stage(priority: str, label: str, terms: list, maximize: bool) -> None:
         start = time.perf_counter()
         _solve_and_lock(model, solver, terms, maximize=maximize)
@@ -243,7 +237,7 @@ def solve(
         # Stage 1: maximize count of completed tasks in this tier.
         _stage(priority, "count", [tv.scheduled for tv in tier], maximize=True)
 
-        # Stage 2: among ties, prefer completing more urgent (earlier-deadline) tasks.
+        # Stage 2: among ties, prefer tasks with an earlier deadline.
         urgency_terms = [(horizon_days - tv.task.deadline_day) * tv.scheduled for tv in tier]
         _stage(priority, "urgency", urgency_terms, maximize=True)
 

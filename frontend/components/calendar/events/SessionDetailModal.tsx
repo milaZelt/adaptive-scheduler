@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import type { PlacementReason, ScheduledSession } from "@/lib/calendar/types";
-import { fmtHour, parseLocalDate } from "@/lib/calendar/dateUtils";
+import { fmtHour, fmtLongDate, parseLocalDate } from "@/lib/calendar/dateUtils";
 import { useAppState } from "../state/AppStateContext";
 import Modal from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
@@ -13,12 +13,9 @@ interface SessionDetailModalProps {
   onClose: () => void;
 }
 
-/** Templated from the structured facts captured at solve time, not
- *  reconstructed after the fact, since "why" describes calendar state at
- *  the moment of solving. Only states what placementReason actually
- *  carries (priority-tier composition, calendar adjacency, split
- *  position), not a claim about the solver's internal search that a
- *  single result can't honestly support. */
+/** Built from facts saved when the solver ran, not guessed afterward. It
+ *  only describes what placementReason actually stores, not how the
+ *  solver's search worked internally. */
 function explainPlacement(reason: PlacementReason): string {
   const priorityClause =
     reason.otherTierTasksCount === 0
@@ -35,29 +32,32 @@ function explainPlacement(reason: PlacementReason): string {
   return `${priorityClause}, so it was scheduled as soon as possible.${splitSuffix}`;
 }
 
-/** A scheduled session's only allowed direct interactions: toggle
- *  Completed/Missed, or jump to the underlying flexible task to change
- *  what the next Update Schedule produces. No edit, delete, or drag on
- *  the placement itself. */
+/** A session can only be marked Completed/Missed, or opened to view its
+ *  task. You can't edit, delete, or drag the placement itself. */
 export default function SessionDetailModal({ session, onClose }: SessionDetailModalProps) {
-  const { getCategory, getFlexibleTaskById, openFlexibleEventDrawer, markSessionCompletion } =
-    useAppState();
+  const {
+    getCategory,
+    getFlexibleTaskById,
+    openFlexibleEventDrawer,
+    markSessionCompletion,
+    reportSystemError,
+  } = useAppState();
   const [saving, setSaving] = useState<"completed" | "missed" | null>(null);
 
   const category = getCategory(session.categoryId);
   const task = getFlexibleTaskById(session.taskId);
-  const dateStr = parseLocalDate(session.date).toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
+  const dateStr = fmtLongDate(parseLocalDate(session.date));
 
   async function handleMark(status: "completed" | "missed") {
     if (saving) return;
     setSaving(status);
     const success = await markSessionCompletion(session.id, status);
     setSaving(null);
-    if (success) onClose();
+    if (success) {
+      onClose();
+    } else {
+      reportSystemError("Couldn't update that session. Please try again.");
+    }
   }
 
   function handleViewTask() {

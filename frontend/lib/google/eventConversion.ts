@@ -2,12 +2,10 @@ import type { CalendarEvent } from "@/lib/calendar/types";
 import { addDays, parseLocalDate, toISODate } from "@/lib/calendar/dateUtils";
 import type { GoogleCalendarEvent } from "./calendar";
 
-/** Reads the literal date/hour digits straight out of an RFC3339 string
- *  (e.g. "2026-08-15T14:30:00-04:00") without ever constructing a Date
- *  object - the embedded offset already encodes the intended wall-clock
- *  moment, so converting through any other timezone (the server's, or any
- *  assumed one) would silently shift it. Matches this app's established
- *  rule that time interpretation never depends on server-local timezone. */
+/** Reads the date/hour straight out of an RFC3339 string (e.g.
+ *  "2026-08-15T14:30:00-04:00") as text, without building a Date object.
+ *  Building a Date would convert through some timezone and silently shift
+ *  the time - this app never wants that. */
 function parseWallClock(dateTime: string): { date: string; hour: number } {
   const match = dateTime.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})/);
   if (!match) throw new Error(`Unrecognized Google dateTime format: ${dateTime}`);
@@ -15,12 +13,10 @@ function parseWallClock(dateTime: string): { date: string; hour: number } {
   return { date, hour: Number(hourStr) + Number(minuteStr) / 60 };
 }
 
-/** One Google Calendar event -> zero or more insertable CalendarEvent rows,
- *  clipped to [horizonStartISO, horizonEndISO]. Zero or more, not exactly
- *  one: a multi-day all-day event needs one row per spanned day, since this
- *  app's CalendarEvent has no multi-day span concept - the same treatment a
- *  recurring event already gets (one row per real occurrence), just driven
- *  by span length instead of a recurrence rule. */
+/** Turns one Google Calendar event into zero or more CalendarEvent rows,
+ *  clipped to [horizonStartISO, horizonEndISO]. A multi-day all-day event
+ *  becomes one row per day, since CalendarEvent can't span multiple days -
+ *  same idea as how a recurring event becomes one row per occurrence. */
 export function convertGoogleEvent(
   event: GoogleCalendarEvent,
   categoryId: string,
@@ -37,9 +33,9 @@ export function convertGoogleEvent(
   };
 
   if (event.start.date && event.end.date) {
-    // All-day: Google's end.date is exclusive, even for a single-day event
-    // (start=Aug 15, end=Aug 16) - the real last included day is one
-    // before end.date.
+    // All-day: Google's end.date doesn't include the last day (start=Aug 15,
+    // end=Aug 16 means just Aug 15). So the real last day is one day before
+    // end.date.
     const days: string[] = [];
     let cursor = event.start.date;
     while (cursor < event.end.date) {
@@ -54,9 +50,9 @@ export function convertGoogleEvent(
     const endWall = parseWallClock(event.end.dateTime);
     if (startWall.date < horizonStartISO || startWall.date > horizonEndISO) return [];
 
-    // Crossing midnight has no clean single-row fit in this app's
-    // one-date-per-row model - clamped to end at midnight rather than
-    // dropped entirely or rendered past the grid's actual range.
+    // An event that crosses midnight doesn't fit our one-date-per-row model.
+    // We cut it off at midnight instead of dropping it or showing it past
+    // the grid's range.
     const end = endWall.date === startWall.date ? endWall.hour : 24;
 
     return [{ ...base, date: startWall.date, allDay: false, start: startWall.hour, end }];

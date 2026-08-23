@@ -1,7 +1,7 @@
-"""Benchmarks the CP-SAT solver's real-world performance across a range of
-task counts. A standalone script, not a pytest test - exploratory timing
-runs don't belong in a fast, deterministic CI suite. CI runs this same
-script with --quick instead: a small, fast subset, as a sanity check.
+"""Benchmarks the CP-SAT solver's real-world speed across different task
+counts. A standalone script, not a pytest test - slow exploratory timing
+runs don't belong in a fast CI suite. CI runs this same script with
+--quick instead, for a small, fast sanity check.
 
 Run: python -m benchmarks.bench_solver [--quick]
 (from backend/, with the venv active - same as running pytest)
@@ -14,43 +14,28 @@ import time
 from pathlib import Path
 from unittest.mock import patch
 
-from ortools.sat.python import cp_model
-
+from benchmarks._solver_patch import force_single_worker
 from solver.constants import PRIORITY_ORDER
 from solver.engine import solve
 from solver.types import BusyInterval, FlexibleTaskInput
 
-# Tighter than production's 10s-per-stage default, on purpose: combined with
-# the single-worker cap below, this limits how long any one stage can run on
-# that one core before giving up. It either returns FEASIBLE, or - if
-# nothing was found yet - fails loudly instead of grinding silently (see
-# bench_one's try/except).
+# Tighter than production's 10s default, on purpose. Combined with the
+# single-worker limit below, this caps how long one stage can run before
+# giving up. It either returns FEASIBLE, or fails loudly instead of
+# grinding silently if it found nothing yet (see bench_one's
+# try/except).
 BENCHMARK_STAGE_TIME_LIMIT_S = 3.0
 
-# Hard cap CP-SAT to one worker thread for every solver instance this script
-# creates - a real ceiling on machine usage (at most one core, never a
-# multi-core spike), since this runs on a personal dev machine that's doing
-# other things at the same time. Production (engine.py, run on its own
-# backend host) is untouched - this only patches CpSolver within this
-# script's own process.
-_original_cp_solver_init = cp_model.CpSolver.__init__
-
-
-def _single_worker_init(self, *args, **kwargs):
-    _original_cp_solver_init(self, *args, **kwargs)
-    self.parameters.num_search_workers = 1
-
-
-cp_model.CpSolver.__init__ = _single_worker_init
+force_single_worker()
 
 HORIZON_DAYS = 14
 DEFAULT_REPEATS = 3
 
 
 def make_tasks(count: int) -> list[FlexibleTaskInput]:
-    """A realistic task set of the given size, with mixed priorities and
-    splittability. Deterministic (no randomness), so runs are directly
-    comparable across repeats and machines."""
+    """A realistic set of tasks of the given size, with mixed priorities
+    and splittability. No randomness, so runs stay comparable across
+    repeats and machines."""
     tasks = []
     for i in range(count):
         priority = PRIORITY_ORDER[i % len(PRIORITY_ORDER)]
@@ -71,16 +56,16 @@ def make_tasks(count: int) -> list[FlexibleTaskInput]:
 
 
 def make_busy_intervals() -> list[BusyInterval]:
-    """A modest daily commitment (e.g. classes) across the horizon, so the
-    solver has real contention to resolve instead of an empty calendar -
-    closer to a real user's calendar."""
+    """A small daily commitment (like classes) across the horizon, so the
+    solver has real contention to resolve instead of an empty calendar.
+    Closer to a real user's calendar."""
     return [BusyInterval(day=d, start_hour=9.0, end_hour=11.0) for d in range(HORIZON_DAYS)]
 
 
 def summarize_stage_timings(stage_timings: list[dict], top_n: int = 3) -> list[dict]:
-    """Average elapsed time per (priority, stage) label across every
-    repeat, sorted slowest first - shows where a solve's time actually
-    goes, not just the total."""
+    """Average time per (priority, stage) across every repeat, sorted
+    slowest first. Shows where a solve's time actually goes, not just
+    the total."""
     grouped: dict[tuple[str, str], list[float]] = {}
     for entry in stage_timings:
         grouped.setdefault((entry["priority"], entry["stage"]), []).append(entry["elapsed_s"])
@@ -110,10 +95,10 @@ def bench_one(task_count: int, repeats: int) -> dict:
                     stage_timings=stage_timings,
                 )
             except RuntimeError:
-                # A stage hit BENCHMARK_STAGE_TIME_LIMIT_S without finding a
-                # feasible solution (status=UNKNOWN). Real data, not a bug -
-                # the single core spent that long and still came up empty -
-                # so it's counted below instead of crashing the run.
+                # A stage hit the time limit without finding a solution
+                # (status=UNKNOWN). This is real data, not a bug - the
+                # single core just ran out of time. We count it below
+                # instead of crashing the run.
                 not_converged += 1
             durations.append(time.perf_counter() - start)
 
@@ -132,9 +117,9 @@ def bench_one(task_count: int, repeats: int) -> dict:
 
 
 def write_chart(results: list[dict], path: Path) -> None:
-    """Minimal hand-rolled SVG bar chart (task count vs. mean solve time) -
-    four bars don't need a plotting library, and .svg renders natively when
-    viewing this file on GitHub."""
+    """A small hand-made SVG bar chart: task count vs. mean solve time.
+    Four bars don't need a plotting library, and .svg shows up directly
+    on GitHub."""
     width, height, pad = 480, 280, 40
     plot_h = height - 2 * pad
     max_s = max(r["mean_s"] for r in results) or 1.0
@@ -146,8 +131,8 @@ def write_chart(results: list[dict], path: Path) -> None:
         x = pad + i * bar_w + bar_w * 0.15
         y = height - pad - bar_h
         w = bar_w * 0.7
-        # Flags any run where a stage hit the time cap without converging,
-        # so the chart itself discloses when a bar's number is less solid.
+        # Marks runs where a stage hit the time cap without converging,
+        # so the chart shows when a number is less solid.
         label_color = "#b91c1c" if r["not_converged"] > 0 else "#1f2937"
         bars.append(
             f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{bar_h:.1f}" fill="#2563eb" />'
@@ -160,8 +145,8 @@ def write_chart(results: list[dict], path: Path) -> None:
     title = f"Mean solve time vs. task count (single-core, {BENCHMARK_STAGE_TIME_LIMIT_S}s/stage cap)"
     parts = [
         f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif">',
-        # Explicit background - without it the text colors below assume a
-        # light canvas and read as near-invisible on a dark viewer/OS theme.
+        # Explicit white background. Without it, the text colors below
+        # assume a light background and are hard to see in dark mode.
         f'<rect width="{width}" height="{height}" fill="white" />',
         f'<line x1="{pad}" y1="{height - pad}" x2="{width - pad}" y2="{height - pad}" stroke="#9ca3af" />',
         *bars,

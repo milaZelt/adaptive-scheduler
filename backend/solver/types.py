@@ -1,6 +1,5 @@
-"""Plain data contracts for the solver. Deliberately framework-free (no
-Pydantic/FastAPI here) - the API layer wraps these in a real HTTP schema
-separately.
+"""Plain data types for the solver. No Pydantic or FastAPI here on purpose
+- the API layer wraps these in its own HTTP schema.
 """
 
 from dataclasses import dataclass, field
@@ -8,9 +7,9 @@ from dataclasses import dataclass, field
 
 @dataclass(frozen=True)
 class BusyInterval:
-    """A fixed or Google-imported event that flexible work must avoid (with
-    padding). These events are never checked against each other - only used
-    here as read-only input."""
+    """A fixed or Google event that flexible tasks must avoid (with some
+    padding). Read-only input - these events are never checked against
+    each other."""
 
     day: int  # 0-indexed within the horizon
     start_hour: float  # decimal hour, e.g. 10.0
@@ -19,13 +18,12 @@ class BusyInterval:
 
 @dataclass(frozen=True)
 class FlexibleTaskInput:
-    """A flexible task's remaining work. remaining_minutes is already
-    computed upstream (required duration minus completed past sessions).
-    Overdue tasks are filtered out before reaching the solver - it never
-    sees them."""
+    """A flexible task's remaining work. remaining_minutes is the full
+    duration minus sessions already done, computed upstream. Overdue
+    tasks are filtered out earlier - the solver never sees them."""
 
     id: str
-    priority: str  # "High" | "Medium" | "Low"
+    priority: str  # "High" | "Medium" | "Low" - keep in sync with constants.PRIORITY_ORDER and api/schemas.Priority
     deadline_day: int  # 0-indexed within the horizon, inclusive
     remaining_minutes: int
     min_session_minutes: int
@@ -44,7 +42,7 @@ class SessionPlacement:
 @dataclass(frozen=True)
 class TaskResult:
     task_id: str
-    scheduled: bool  # True iff the task's *entire* remaining_minutes was placed
+    scheduled: bool  # True only if the task's *entire* remaining_minutes was placed
     sessions: list[SessionPlacement] = field(default_factory=list)
 
 

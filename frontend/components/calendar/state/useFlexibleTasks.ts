@@ -19,12 +19,12 @@ export interface UseFlexibleTasksResult {
   ) => Promise<FlexibleTask | null>;
   updateFlexibleTask: (id: string, patch: Partial<FlexibleTask>) => Promise<boolean>;
   deleteFlexibleTask: (id: string) => Promise<boolean>;
-  /** Cascades a category delete - removes every task tied to that category
-   *  from local state (the DB relationship is ON DELETE CASCADE already). */
+  /** Removes every task in a deleted category from local state (the DB
+   *  already does this with ON DELETE CASCADE). */
   removeFlexibleTasksByCategory: (categoryId: string) => void;
-  /** Replaces local state wholesale - used right after a successful Update
-   *  Schedule run, whose Route Handler already persisted the fresh rows
-   *  server-side and returns them for the client to adopt directly. */
+  /** Replaces the whole task list. Used right after Update Schedule
+   *  succeeds - the server already saved these rows, so the client just
+   *  adopts them directly. */
   setFlexibleTasks: (tasks: FlexibleTask[]) => void;
 }
 

@@ -1,8 +1,8 @@
-"""A simple greedy scheduler: process tasks in priority/deadline order,
-place each into the earliest slot it fits, never revisit an earlier
-decision - the "obvious first attempt" a competent engineer would reach
-for without a constraint solver. Built only to produce an honest
-comparison against solver.engine.solve(); never used by the real app.
+"""A simple greedy scheduler. It goes through tasks in priority/deadline
+order, places each one in the earliest slot that fits, and never
+revisits an earlier choice - the "obvious first try" you'd reach for
+without a real solver. Built only to compare against
+solver.engine.solve(); the real app never uses this.
 """
 
 from solver.constants import (
@@ -17,9 +17,9 @@ from solver.types import BusyInterval, FlexibleTaskInput, SessionPlacement, Solv
 
 
 def _fixed_occupied_windows(busy_intervals: list[BusyInterval]) -> list[tuple[int, int]]:
-    """Fixed/Google busy intervals as absolute minute ranges, padded by the
-    full PADDING_MIN on each side - matches the real solver's flex-vs-fixed
-    rule, so the comparison is fair."""
+    """Turns fixed/Google busy intervals into absolute minute ranges,
+    padded by PADDING_MIN on each side. Matches the real solver's
+    flex-vs-fixed rule, so the comparison stays fair."""
     windows = []
     for b in busy_intervals:
         start = b.day * MINUTES_PER_DAY + round(b.start_hour * 60) - PADDING_MIN
@@ -35,9 +35,10 @@ def _fits(start: int, end: int, occupied: list[tuple[int, int]]) -> bool:
 def _find_slot(
     duration: int, deadline_day: int, occupied: list[tuple[int, int]], start_from: int = 0
 ) -> tuple[int, int] | None:
-    """Earliest [start, end) of exactly `duration` minutes, within the
-    8AM-11PM window on some day 0..deadline_day, clear of every occupied
-    window, snapped to SNAP_MIN, never scanning earlier than start_from."""
+    """Finds the earliest open slot of exactly `duration` minutes. Searches
+    days 0 to deadline_day, inside the 8AM-11PM window, snapped to
+    SNAP_MIN, avoiding every occupied window. Never looks earlier than
+    start_from."""
     for day in range(deadline_day + 1):
         day_start = max(day * MINUTES_PER_DAY + WINDOW_START_MIN, start_from)
         if day_start % SNAP_MIN:
@@ -53,9 +54,10 @@ def _find_slot(
 
 
 def _place_task(task: FlexibleTaskInput, occupied: list[tuple[int, int]]) -> list[tuple[int, int]] | None:
-    """Greedily finds session(s) covering the task's full remaining_minutes.
-    All-or-nothing, like the real solver: returns None if the full duration
-    can't be found before the deadline, rather than a partial placement."""
+    """Greedily finds session(s) that cover the task's full
+    remaining_minutes. All-or-nothing, like the real solver: returns None
+    if it can't fit the full duration before the deadline, instead of a
+    partial placement."""
     if not task.splittable:
         window = _find_slot(task.remaining_minutes, task.deadline_day, occupied)
         return [window] if window else None
@@ -89,10 +91,9 @@ def solve_greedy(
     horizon_days: int,
 ) -> SolveResult:
     """Same input/output shape as solver.engine.solve(), so callers can
-    compare the two directly. horizon_days is accepted only for signature
-    symmetry with the real solver - each task's own deadline_day already
-    bounds how far this scans."""
-    del horizon_days
+    compare them directly. horizon_days is accepted only to match the
+    real solver's signature - each task's own deadline_day already
+    limits the search."""
     priority_rank = {p: i for i, p in enumerate(PRIORITY_ORDER)}
     ordered = sorted(tasks, key=lambda t: (priority_rank[t.priority], t.deadline_day, t.remaining_minutes))
 

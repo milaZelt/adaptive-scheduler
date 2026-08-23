@@ -11,9 +11,9 @@ function estimateLabel(t: FlexibleTask): string {
   return `${t.estimateHours}h`;
 }
 
-/** Each state implies a different next action - couldn't fit / overdue get
- *  a reason line explaining what to do about it, instead of the generic
- *  priority/deadline/estimate line the other two states use. */
+/** Each status shows a different line. Couldn't-fit and overdue explain
+ *  what happened; the other statuses show priority, deadline, and
+ *  estimate instead. */
 function metaLabel(t: FlexibleTask): string {
   switch (t.schedulingStatus) {
     case "couldnt_fit":
@@ -45,6 +45,7 @@ export default function StatusList() {
     deleteFlexibleTask,
     showConfirmDialog,
     showToast,
+    reportSystemError,
     systemMessages,
     dismissSystemMessage,
   } = useAppState();
@@ -62,7 +63,11 @@ export default function StatusList() {
       danger: true,
       onConfirm: async () => {
         const success = await deleteFlexibleTask(task.id);
-        if (success) showToast("Task deleted");
+        if (success) {
+          showToast("Task deleted");
+        } else {
+          reportSystemError("Couldn't delete that task. Please try again.");
+        }
       },
     });
   }

@@ -40,8 +40,8 @@ export interface EventRow {
   event_type: EventType;
   date: string;
   all_day: boolean;
-  // PostgREST serializes `numeric` columns as strings to avoid float
-  // precision loss, so these arrive as e.g. "9.50", not 9.5.
+  // PostgREST sends `numeric` columns as strings (e.g. "9.50", not 9.5)
+  // to avoid float rounding errors.
   start_time: number | string | null;
   end_time: number | string | null;
   description: string | null;

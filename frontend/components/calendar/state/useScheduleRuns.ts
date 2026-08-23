@@ -4,14 +4,14 @@ import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 export interface UseScheduleRunsResult {
-  /** When Update Schedule last completed successfully for this user, or null
-   *  if it never has. Written server-side only, by the apply_schedule_update
-   *  RPC - this hook only ever reads it. */
+  /** When Update Schedule last finished successfully, or null if it never
+   *  has. Only written server-side, by the apply_schedule_update RPC - this
+   *  hook just reads it. */
   lastRunAt: Date | null;
   lastRunAtLoading: boolean;
   lastRunAtError: string | null;
-  /** Adopts the fresh timestamp a successful Update Schedule run returns -
-   *  same bulk-replace-on-success pattern as setFlexibleTasks/setScheduledSessions. */
+  /** Sets the new timestamp after a successful Update Schedule run (same
+   *  pattern as setFlexibleTasks/setScheduledSessions). */
   setLastRunAt: (date: Date | null) => void;
 }
 

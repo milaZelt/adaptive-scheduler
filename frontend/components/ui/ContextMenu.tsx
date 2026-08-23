@@ -19,8 +19,8 @@ interface ContextMenuProps {
   items: ContextMenuItem[];
   onClose: () => void;
   align?: "left" | "right";
-  /** Size the menu to the anchor's own width instead of content-width - used by
-   *  Select so its open panel lines up with the closed field it opened from. */
+  /** Sizes the menu to the anchor's own width instead of content-width.
+   *  Select uses this so the open panel lines up with the closed field. */
   matchWidth?: boolean;
 }
 
@@ -31,9 +31,9 @@ export default function ContextMenu({
   align = "right",
   matchWidth = false,
 }: ContextMenuProps) {
-  // No explicit `width` - the menu sizes to its content (CSS min-width),
-  // unlike Popover's fixed-width forms, so the shared hook measures it
-  // post-mount for both the right-alignment math and the flip check.
+  // No fixed width here - the menu sizes to its own content. So the
+  // shared hook has to measure it after mount, for both alignment and
+  // the flip check.
   const { ref, style } = useFloatingPanel({ anchorRect, onClose, align, matchWidth });
 
   return (

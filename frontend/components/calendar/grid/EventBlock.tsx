@@ -3,8 +3,9 @@
 import React, { useRef, useState } from "react";
 import type { CalendarEvent } from "@/lib/calendar/types";
 import { fmtHour } from "@/lib/calendar/dateUtils";
-import { shadeColor } from "@/lib/calendar/colorUtils";
-import { START_HOUR, END_HOUR, ROW_HEIGHT } from "@/lib/calendar/constants";
+import { getCategoryColors } from "@/lib/calendar/colorUtils";
+import { getBlockGeometry } from "@/lib/calendar/gridLayout";
+import { START_HOUR, END_HOUR } from "@/lib/calendar/constants";
 import { useAppState } from "../state/AppStateContext";
 import styles from "./Calendar.module.css";
 
@@ -15,6 +16,7 @@ interface EventBlockProps {
 const SNAP_HOURS = 0.25; // 15 minutes
 const MIN_DURATION_HOURS = SNAP_HOURS;
 const TOTAL_HOURS = END_HOUR - START_HOUR + 1;
+const DRAG_THRESHOLD_PX = 3; // how far the pointer must move before it counts as a drag, not a click
 
 interface DragState {
   dx: number;
@@ -38,21 +40,15 @@ export default function EventBlock({ event }: EventBlockProps) {
   const start = event.start;
   const end = event.end;
   const duration = end - start;
-  // Recurring events are edited as a whole series via the form (see
-  // lib/calendar/recurrence.ts) - dragging one occurrence would
-  // ambiguously shift the whole series' anchor date, so only plain
-  // non-repeating events support direct drag/resize on the grid.
-  // Imported Google events are excluded too - they're a read-only copy,
-  // replaced wholesale on the next import, so a local drag would just be
-  // silently discarded instead of actually rescheduling anything on
-  // Google.
+  // Recurring events are edited as a whole series, so dragging one
+  // occurrence would be confusing. Only non-repeating events can be
+  // dragged or resized.
+  // Google-imported events are read-only copies, so they can't be
+  // dragged either - a local drag would not change anything in Google.
   const draggable = (event.repeat ?? "none") === "none" && event.source !== "google";
 
-  const top = (start - START_HOUR) * ROW_HEIGHT;
-  const baseHeight = Math.max(duration * ROW_HEIGHT, 26);
-  const short = duration < 0.8;
-  const bg = category ? category.color : "#eeeeee";
-  const border = category ? shadeColor(category.color, -30) : "#cccccc";
+  const { top, height: baseHeight, short } = getBlockGeometry(start, end);
+  const { bg, border } = getCategoryColors(category);
 
   let liveHeight = baseHeight;
   let transform: string | undefined;
@@ -81,7 +77,7 @@ export default function EventBlock({ event }: EventBlockProps) {
     function onMove(ev: PointerEvent) {
       const dx = ev.clientX - startX;
       const dy = ev.clientY - startY;
-      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) moved = true;
+      if (Math.abs(dx) > DRAG_THRESHOLD_PX || Math.abs(dy) > DRAG_THRESHOLD_PX) moved = true;
       setDragState({ dx, dy, resizing: false });
     }
 
@@ -122,7 +118,7 @@ export default function EventBlock({ event }: EventBlockProps) {
 
     function onMove(ev: PointerEvent) {
       const dy = ev.clientY - startY;
-      if (Math.abs(dy) > 3) moved = true;
+      if (Math.abs(dy) > DRAG_THRESHOLD_PX) moved = true;
       setDragState({ dx: 0, dy, resizing: true });
     }
 

@@ -31,7 +31,8 @@ interface FixedEventFormProps {
 }
 
 export default function FixedEventForm({ prefill, onClose }: FixedEventFormProps) {
-  const { currentDate, categories, showToast, createEvent, updateEvent } = useAppState();
+  const { currentDate, categories, showToast, reportSystemError, createEvent, updateEvent } =
+    useAppState();
   const isEdit = !!prefill;
   const [saving, setSaving] = useState(false);
 
@@ -99,6 +100,8 @@ export default function FixedEventForm({ prefill, onClose }: FixedEventFormProps
     if (success) {
       showToast(isEdit ? "Event updated" : "Event created");
       onClose();
+    } else {
+      reportSystemError("Couldn't save that event. Please try again.");
     }
   }
 

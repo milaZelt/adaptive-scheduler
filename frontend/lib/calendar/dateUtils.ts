@@ -7,10 +7,9 @@ export function toISODate(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-/** 'YYYY-MM-DD' -> local midnight Date, the inverse of toISODate(). The
- *  "T00:00:00" suffix is load-bearing, not decoration - without it, the
- *  browser parses a bare date string as UTC midnight, which then renders
- *  as the previous day in any timezone behind UTC. */
+/** 'YYYY-MM-DD' -> local midnight Date (inverse of toISODate()). Keep the
+ *  "T00:00:00" part - without it, the browser reads the date as UTC, which
+ *  can show the wrong day. */
 export function parseLocalDate(iso: string): Date {
   return new Date(iso + "T00:00:00");
 }
@@ -32,14 +31,18 @@ export function fmtHour(t: number): string {
   return mm === 0 ? `${h12} ${suffix}` : `${h12}:${pad(mm)} ${suffix}`;
 }
 
-/** ISO 'YYYY-MM-DD' -> 'Aug 15'. No year - every date this app displays
- *  this way falls within the 14-day planning horizon, always "this year,
- *  very soon" (contrast recurrence.ts's own date formatter, which includes
- *  the year since a recurrence end date can be far in the future). */
+/** ISO 'YYYY-MM-DD' -> 'Aug 15', no year. Dates shown this way are always
+ *  within the next 14 days, so the year is never needed. (recurrence.ts has
+ *  its own formatter that does show the year, for dates further out.) */
 export function fmtShortDate(iso: string): string {
   const d = parseLocalDate(iso);
   if (isNaN(d.getTime())) return iso;
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+/** Date -> 'Saturday, August 15'. */
+export function fmtLongDate(d: Date): string {
+  return d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
 }
 
 /** Decimal hour -> '13:30' for <input type="time"> value. */

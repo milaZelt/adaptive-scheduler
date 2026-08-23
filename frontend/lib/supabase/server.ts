@@ -18,8 +18,8 @@ export async function createClient() {
               cookieStore.set(name, value, options),
             );
           } catch {
-            // Called from a Server Component - safe to ignore since
-            // middleware is responsible for refreshing the session.
+            // Server Components can't set cookies. That's OK - middleware
+            // already handles refreshing the session.
           }
         },
       },

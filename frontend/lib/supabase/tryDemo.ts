@@ -1,8 +1,8 @@
 import { createClient } from "@/lib/supabase/client";
 
-/** Signs in anonymously and seeds demo content (Ticket 10) - shared by the
- *  navbar and marketing login section's "Try Demo" entry points. Caller
- *  handles the redirect to /app itself, so this stays framework-agnostic. */
+/** Signs in anonymously and sets up demo content. Used by both the navbar
+ *  and the login section's "Try Demo" buttons. The caller handles the
+ *  redirect to /app. */
 export async function startDemo(): Promise<{ error: string | null }> {
   const supabase = createClient();
 

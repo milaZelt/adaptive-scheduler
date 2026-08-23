@@ -14,9 +14,9 @@ export async function GET(request: Request) {
     if (!error) {
       const refreshToken = data.session.provider_refresh_token;
       if (refreshToken) {
-        // Best-effort: Google Calendar access is an enhancement, not a
-        // login requirement, so a storage failure here shouldn't block
-        // the user from getting into the app at all.
+        // Best-effort - Google Calendar access is a nice-to-have, not
+        // required to log in. A failure here shouldn't block the user from
+        // getting into the app.
         try {
           await saveGoogleCredentials(supabase, data.session.user.id, {
             refreshToken,

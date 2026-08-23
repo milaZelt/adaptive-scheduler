@@ -3,8 +3,8 @@
 import React from "react";
 import type { ScheduledSession } from "@/lib/calendar/types";
 import { fmtHour } from "@/lib/calendar/dateUtils";
-import { shadeColor } from "@/lib/calendar/colorUtils";
-import { START_HOUR, ROW_HEIGHT } from "@/lib/calendar/constants";
+import { getCategoryColors } from "@/lib/calendar/colorUtils";
+import { getBlockGeometry } from "@/lib/calendar/gridLayout";
 import { useAppState } from "../state/AppStateContext";
 import styles from "./Calendar.module.css";
 
@@ -12,27 +12,19 @@ interface SessionBlockProps {
   session: ScheduledSession;
 }
 
-/** Solver-placed - read-only beyond the Completed/Missed toggle, so unlike
- *  EventBlock this wires up no drag/resize. */
+/** Solver-placed sessions are read-only (just the Completed/Missed toggle),
+ *  so no drag/resize here. */
 export default function SessionBlock({ session }: SessionBlockProps) {
   const { getCategory, getFlexibleTaskById, openSessionDetail } = useAppState();
   const category = getCategory(session.categoryId);
   const task = getFlexibleTaskById(session.taskId);
 
   const { start, end } = session;
-  const duration = end - start;
-  const top = (start - START_HOUR) * ROW_HEIGHT;
-  const height = Math.max(duration * ROW_HEIGHT, 26);
-  const short = duration < 0.8;
+  const { top, height, short } = getBlockGeometry(start, end);
   const resolved = session.completionStatus !== "unresolved";
 
-  const bg = category ? category.color : "#eeeeee";
-  const border =
-    session.completionStatus === "missed"
-      ? "var(--danger)"
-      : category
-        ? shadeColor(category.color, -30)
-        : "#cccccc";
+  const { bg, border: categoryBorder } = getCategoryColors(category);
+  const border = session.completionStatus === "missed" ? "var(--danger)" : categoryBorder;
 
   return (
     <button

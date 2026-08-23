@@ -90,25 +90,35 @@ export function useCategories(
     [categories],
   );
 
+  /** Applies `next` immediately, then runs `request`; on failure, rolls back
+   *  to the pre-optimistic state and reports `errorMessage`. Shared by every
+   *  mutator below except addCategory, whose success path also needs to
+   *  swap in the server-assigned id rather than just keeping `next` as-is. */
+  const optimisticUpdate = useCallback(
+    (next: Category[], request: PromiseLike<{ error: unknown }>, errorMessage: string) => {
+      const prev = categories;
+      setCategories(next);
+      request.then(({ error }) => {
+        if (error) {
+          setCategories(prev);
+          onError(errorMessage);
+        }
+      });
+    },
+    [categories, onError],
+  );
+
   const toggleCategory = useCallback(
     (id: string) => {
-      const prev = categories;
-      const target = prev.find((c) => c.id === id);
+      const target = categories.find((c) => c.id === id);
       if (!target) return;
-      setCategories((cur) => cur.map((c) => (c.id === id ? { ...c, checked: !c.checked } : c)));
-
-      supabase
-        .from("categories")
-        .update({ checked: !target.checked })
-        .eq("id", id)
-        .then(({ error }) => {
-          if (error) {
-            setCategories(prev);
-            onError("Couldn't update that calendar. Please try again.");
-          }
-        });
+      optimisticUpdate(
+        categories.map((c) => (c.id === id ? { ...c, checked: !c.checked } : c)),
+        supabase.from("categories").update({ checked: !target.checked }).eq("id", id),
+        "Couldn't update that calendar. Please try again.",
+      );
     },
-    [categories, supabase, onError],
+    [categories, supabase, optimisticUpdate],
   );
 
   const addCategory = useCallback(
@@ -138,61 +148,36 @@ export function useCategories(
 
   const renameCategory = useCallback(
     (id: string, name: string) => {
-      const prev = categories;
-      setCategories((cur) => cur.map((c) => (c.id === id ? { ...c, name } : c)));
-
-      supabase
-        .from("categories")
-        .update({ name })
-        .eq("id", id)
-        .then(({ error }) => {
-          if (error) {
-            setCategories(prev);
-            onError("Couldn't rename that calendar. Please try again.");
-          }
-        });
+      optimisticUpdate(
+        categories.map((c) => (c.id === id ? { ...c, name } : c)),
+        supabase.from("categories").update({ name }).eq("id", id),
+        "Couldn't rename that calendar. Please try again.",
+      );
     },
-    [categories, supabase, onError],
+    [categories, supabase, optimisticUpdate],
   );
 
   const recolorCategory = useCallback(
     (id: string, color: string) => {
-      const prev = categories;
-      setCategories((cur) => cur.map((c) => (c.id === id ? { ...c, color } : c)));
-
-      supabase
-        .from("categories")
-        .update({ color })
-        .eq("id", id)
-        .then(({ error }) => {
-          if (error) {
-            setCategories(prev);
-            onError("Couldn't recolor that calendar. Please try again.");
-          }
-        });
+      optimisticUpdate(
+        categories.map((c) => (c.id === id ? { ...c, color } : c)),
+        supabase.from("categories").update({ color }).eq("id", id),
+        "Couldn't recolor that calendar. Please try again.",
+      );
     },
-    [categories, supabase, onError],
+    [categories, supabase, optimisticUpdate],
   );
 
   const deleteCategory = useCallback(
     (id: string): string => {
-      const prev = categories;
-      setCategories((cur) => cur.filter((c) => c.id !== id));
-
-      supabase
-        .from("categories")
-        .delete()
-        .eq("id", id)
-        .then(({ error }) => {
-          if (error) {
-            setCategories(prev);
-            onError("Couldn't delete that calendar. Please try again.");
-          }
-        });
-
+      optimisticUpdate(
+        categories.filter((c) => c.id !== id),
+        supabase.from("categories").delete().eq("id", id),
+        "Couldn't delete that calendar. Please try again.",
+      );
       return id;
     },
-    [categories, supabase, onError],
+    [categories, supabase, optimisticUpdate],
   );
 
   return {

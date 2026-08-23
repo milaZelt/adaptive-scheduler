@@ -11,20 +11,20 @@ export interface UseEventsResult {
   events: CalendarEvent[];
   eventsLoading: boolean;
   eventsError: string | null;
-  /** Recurring events are expanded client-side from their single stored rule -
-   *  the returned occurrence keeps the series' id but has `date` set to the
-   *  actual day being rendered. */
+  /** Expands recurring events in the browser from their single stored rule.
+   *  Each occurrence keeps the series' id, but `date` is set to the actual
+   *  day shown. */
   getEventsForDate: (date: Date, categories: Category[]) => CalendarEvent[];
   getEventById: (id: string) => CalendarEvent | undefined;
   createEvent: (input: Omit<CalendarEvent, "id">) => Promise<CalendarEvent | null>;
   updateEvent: (id: string, patch: Partial<CalendarEvent>) => Promise<boolean>;
   deleteEvent: (id: string) => Promise<boolean>;
-  /** Cascades a category delete - removes every event tied to that category
-   *  from local state (the DB relationship is ON DELETE CASCADE already). */
+  /** Removes every event in a deleted category from local state (the DB
+   *  already does this with ON DELETE CASCADE). */
   removeEventsByCategory: (categoryId: string) => void;
-  /** Replaces the full events list - used by useGoogleImport to merge in
-   *  the fresh state a successful import returns, same pattern as
-   *  useUpdateSchedule's setFlexibleTasks/setScheduledSessions. */
+  /** Replaces the whole events list. Used by useGoogleImport to load in the
+   *  fresh events after a successful import (same pattern as
+   *  useUpdateSchedule's setters). */
   setEvents: (events: CalendarEvent[]) => void;
 }
 

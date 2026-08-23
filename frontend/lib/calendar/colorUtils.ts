@@ -21,3 +21,14 @@ export function shadeColor(hex: string, percent: number): string {
 export function isValidHex(value: string): boolean {
   return /^#[0-9A-Fa-f]{6}$/.test(value);
 }
+
+/** Background and border color for a category. Falls back to gray when
+ *  there's no category, so every block on the grid (event, session, chip,
+ *  month dot) looks the same when uncategorized. */
+export function getCategoryColors(
+  category: { color: string } | null | undefined,
+): { bg: string; border: string } {
+  return category
+    ? { bg: category.color, border: shadeColor(category.color, -30) }
+    : { bg: "#eeeeee", border: "#cccccc" };
+}

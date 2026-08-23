@@ -11,8 +11,8 @@ import styles from "./ResolveSessionsModal.module.css";
 interface ResolveSessionsModalProps {
   sessions: UnresolvedSessionInfo[];
   onClose: () => void;
-  /** Called once every session has been marked and saved - the caller
-   *  re-triggers Update Schedule from here. */
+  /** Called after every session is marked and saved. The caller uses this
+   *  to re-run Update Schedule. */
   onResolved: () => void;
 }
 

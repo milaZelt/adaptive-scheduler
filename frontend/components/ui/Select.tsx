@@ -17,10 +17,9 @@ interface SelectProps {
   placeholder?: string;
 }
 
-/** Styled drop-in replacement for a native <select> - a native select's own
- *  open listbox is largely unstylable across browsers, so this renders a
- *  button that opens the same floating ContextMenu used elsewhere, sized to
- *  match its own width. */
+/** A styled stand-in for the native <select>, since you can't style a
+ *  native dropdown's open list across browsers. Renders a button that
+ *  opens the same floating ContextMenu used elsewhere, sized to match. */
 export default function Select({ value, onChange, options, placeholder = "Select…" }: SelectProps) {
   const btnRef = useRef<HTMLButtonElement>(null);
   const [anchor, setAnchor] = useState<DOMRect | null>(null);

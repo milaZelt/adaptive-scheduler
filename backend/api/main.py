@@ -1,10 +1,10 @@
-"""Stateless FastAPI wrapper around solver.engine.solve(). Holds zero
-Supabase credentials and no database access of any kind - Next.js gathers
-all input server-side, POSTs it here, and is solely responsible for
-persisting the result. Only ever reachable from Next.js's own server-side
-Route Handler, never a browser directly - so no CORS middleware is
-configured on purpose. Adding permissive CORS here would weaken that trust
-boundary.
+"""A stateless FastAPI wrapper around solver.engine.solve(). It holds no
+Supabase credentials and touches no database - Next.js gathers the input,
+POSTs it here, and saves the result itself.
+
+Only Next.js's own server can reach this, never a browser directly.
+That's why there's no CORS setup here on purpose - adding CORS would open
+this up to browsers too, which we don't want.
 """
 
 from dotenv import load_dotenv
@@ -16,16 +16,16 @@ from solver.types import BusyInterval, FlexibleTaskInput, SessionPlacement, Task
 from .auth import require_shared_secret
 from .schemas import (
     BusyIntervalIn,
-    FlexibleTaskIn,
+    FlexibleTaskPayload,
     SessionPlacementOut,
     SolveRequest,
     SolveResponse,
     TaskResultOut,
 )
 
-# Loads backend/.env for local dev (see .env.example) - auth.py then reads
-# SOLVER_SHARED_SECRET via os.environ per-request. No-op in production if a
-# real environment variable is already set instead of a .env file.
+# Loads backend/.env for local dev (see .env.example). auth.py then
+# reads SOLVER_SHARED_SECRET from the environment on each request. Does
+# nothing in production, where a real env var is already set.
 load_dotenv()
 
 app = FastAPI(
@@ -38,7 +38,7 @@ def _to_busy_interval(b: BusyIntervalIn) -> BusyInterval:
     return BusyInterval(day=b.day, start_hour=b.start_hour, end_hour=b.end_hour)
 
 
-def _to_flexible_task(t: FlexibleTaskIn) -> FlexibleTaskInput:
+def _to_flexible_task(t: FlexibleTaskPayload) -> FlexibleTaskInput:
     return FlexibleTaskInput(
         id=t.id,
         priority=t.priority,

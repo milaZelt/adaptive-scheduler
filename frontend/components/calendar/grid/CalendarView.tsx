@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useAppState } from "../state/AppStateContext";
-import { getWeekDays } from "@/lib/calendar/dateUtils";
+import { fmtLongDate, getWeekDays } from "@/lib/calendar/dateUtils";
 import { MONTH_NAMES, MONTH_SHORT } from "@/lib/calendar/constants";
 import TimeGrid from "./TimeGrid";
 import MonthGrid from "./MonthGrid";
@@ -48,15 +48,7 @@ function CalendarTitle({ weekDays }: CalendarTitleProps) {
   const { currentView, currentDate } = useAppState();
 
   if (currentView === "day") {
-    return (
-      <>
-        {currentDate.toLocaleDateString("en-US", {
-          weekday: "long",
-          month: "long",
-          day: "numeric",
-        })}
-      </>
-    );
+    return <>{fmtLongDate(currentDate)}</>;
   }
 
   if (currentView === "month") {

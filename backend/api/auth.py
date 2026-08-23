@@ -1,13 +1,13 @@
-"""Shared-secret gate - defense in depth on top of this service only ever
-being reachable from Next.js's own server, never a browser. Not a real
-auth system, just a check that the caller is who it should be.
+"""Checks a shared secret - an extra safety layer on top of this service
+only ever being reachable from Next.js's own server, never a browser.
+This is not real auth, just a check that the caller is who we expect.
 
-Reads the expected secret from the environment on every call rather than
-caching it at import time, so tests can freely set/change
-SOLVER_SHARED_SECRET per-test without needing to reload this module.
+We read the secret from the environment on every call instead of caching
+it at import time. This lets tests freely change SOLVER_SHARED_SECRET per
+test, without reloading this module.
 
-Fails closed: if the server has no secret configured at all, every request
-is rejected rather than silently letting everything through.
+Fails closed: if no secret is set on the server, every request is
+rejected instead of silently allowed through.
 """
 
 import os

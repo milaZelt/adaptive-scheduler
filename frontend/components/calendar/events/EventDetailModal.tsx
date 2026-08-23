@@ -3,7 +3,7 @@
 import React from "react";
 import type { CalendarEvent } from "@/lib/calendar/types";
 import { useAppState } from "../state/AppStateContext";
-import { fmtHour, parseLocalDate } from "@/lib/calendar/dateUtils";
+import { fmtHour, fmtLongDate, parseLocalDate } from "@/lib/calendar/dateUtils";
 import Modal from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
 import styles from "./EventDetail.module.css";
@@ -14,7 +14,7 @@ interface EventDetailModalProps {
 }
 
 export default function EventDetailModal({ event, onClose }: EventDetailModalProps) {
-  const { getCategory, openFixedEventDrawer, showConfirmDialog, showToast, deleteEvent } =
+  const { getCategory, openFixedEventDrawer, showConfirmDialog, showToast, reportSystemError, deleteEvent } =
     useAppState();
 
   const isGoogleEvent = event.source === "google";
@@ -23,11 +23,7 @@ export default function EventDetailModal({ event, onClose }: EventDetailModalPro
     event.allDay || event.start === null || event.end === null
       ? "All day"
       : `${fmtHour(event.start)} – ${fmtHour(event.end)}`;
-  const dateStr = parseLocalDate(event.date).toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
+  const dateStr = fmtLongDate(parseLocalDate(event.date));
 
   function handleEdit() {
     onClose();
@@ -43,7 +39,11 @@ export default function EventDetailModal({ event, onClose }: EventDetailModalPro
       danger: true,
       onConfirm: async () => {
         const success = await deleteEvent(event.id);
-        if (success) showToast("Event deleted");
+        if (success) {
+          showToast("Event deleted");
+        } else {
+          reportSystemError("Couldn't delete that event. Please try again.");
+        }
       },
     });
   }
