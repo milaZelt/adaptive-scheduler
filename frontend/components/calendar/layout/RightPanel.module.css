@@ -5,8 +5,62 @@
   padding: 2.25rem 2rem;
   display: flex;
   flex-direction: column;
-  gap: 2.25rem;
+  gap: 1.25rem;
   overflow-y: auto;
+  overflow-x: hidden;
+  transition: width 0.25s ease, padding 0.25s ease;
+}
+
+.panelRight.collapsed {
+  width: 44px;
+  padding: 2.25rem 0.5rem;
+  overflow-y: hidden;
+}
+
+.toggleBtn {
+  align-self: flex-end;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: color 0.2s, border-color 0.2s;
+}
+.toggleBtn:hover {
+  color: var(--pink);
+  border-color: var(--pink);
+}
+.collapsed .toggleBtn {
+  align-self: center;
+}
+
+.panelContent {
+  display: flex;
+  flex-direction: column;
+  gap: 2.25rem;
+  min-width: 0;
+  opacity: 1;
+  transition: opacity 0.15s ease;
+}
+.collapsed .panelContent {
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panelRight,
+  .toggleBtn,
+  .panelContent {
+    transition: none;
+  }
 }
 
 .noteLabel {
@@ -52,8 +106,8 @@
   border-radius: 10px;
   padding: 0.75rem 0.9rem;
   font-family: var(--font-serif);
-  font-size: 0.92rem;
-  line-height: 1.7;
+  font-size: 0.78rem;
+  line-height: 1.6;
 }
 
 .statusLabel {
