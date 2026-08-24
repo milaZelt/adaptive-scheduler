@@ -533,6 +533,12 @@ async function fetchFreshState(supabase: SupabaseClient, userId: string): Promis
   };
 }
 
+// Vercel's default function timeout (10s on the Hobby plan) is shorter
+// than a cold Render free-tier instance can take to wake up. Without
+// this, the very first solve after any idle period gets killed by Vercel
+// before the solver even responds.
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   const parsedToday = await parseToday(request);
   if (parsedToday instanceof NextResponse) return parsedToday;

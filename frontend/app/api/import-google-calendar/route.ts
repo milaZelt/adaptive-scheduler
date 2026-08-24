@@ -111,6 +111,10 @@ async function fetchFreshEvents(
   return ((data ?? []) as EventRow[]).map(eventFromRow);
 }
 
+// Paginated Google API calls plus a possible token refresh can run past
+// Vercel's default 10s function timeout (Hobby plan) for a large calendar.
+export const maxDuration = 30;
+
 export async function POST(request: Request) {
   const todayDate = await parseToday(request);
   if (todayDate instanceof NextResponse) return todayDate;

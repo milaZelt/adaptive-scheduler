@@ -5,6 +5,7 @@ import AboutSection from "@/components/marketing/AboutSection";
 import FaqSection from "@/components/marketing/FaqSection";
 import PageBackdrop from "@/components/marketing/PageBackdrop";
 import ScrollReveal from "@/components/marketing/ScrollReveal";
+import WarmSolver from "@/components/marketing/WarmSolver";
 import styles from "./page.module.css";
 
 export default function Home() {
@@ -12,6 +13,7 @@ export default function Home() {
     <div className={styles.page}>
       <PageBackdrop />
       <ScrollReveal />
+      <WarmSolver />
       <div className={styles.content}>
         <Navbar />
         <Hero />

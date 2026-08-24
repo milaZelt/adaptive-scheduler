@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { GOOGLE_CALENDAR_SCOPE } from "@/lib/google/constants";
+import { wakeSolver } from "@/lib/wakeSolver";
 import TryDemoButton from "./TryDemoButton";
 import styles from "./LoginSection.module.css";
 
@@ -11,6 +12,7 @@ export default function LoginSection() {
   const [error, setError] = useState<string | null>(null);
 
   const handleGoogleSignIn = async () => {
+    wakeSolver();
     setError(null);
     setLoading(true);
     const supabase = createClient();

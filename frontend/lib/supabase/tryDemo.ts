@@ -1,9 +1,11 @@
 import { createClient } from "@/lib/supabase/client";
+import { wakeSolver } from "@/lib/wakeSolver";
 
 /** Signs in anonymously and sets up demo content. Used by both the navbar
  *  and the login section's "Try Demo" buttons. The caller handles the
  *  redirect to /app. */
 export async function startDemo(): Promise<{ error: string | null }> {
+  wakeSolver();
   const supabase = createClient();
 
   const { data, error } = await supabase.auth.signInAnonymously();
