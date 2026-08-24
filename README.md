@@ -6,6 +6,8 @@
 
 Nextly is an adaptive weekly scheduler. You give it tasks, each with a priority and a deadline, and it decides *when* to do them, fitting them into the open space around the fixed events already on your calendar. It's not a to-do list sorted by due date: placement is solved by a constraint solver, not a greedy heuristic.
 
+![Nextly marketing page](docs/screenshots/marketing-hero.png)
+
 ## What makes this worth a look
 
 - **Real optimization, not a sort.** The backend runs Google OR-Tools' CP-SAT solver with a genuine lexicographic multi-tier objective: maximize completed High-priority tasks first, break ties by deadline urgency, then by task length. That result gets locked in, then the same process repeats for Medium, then Low. A lower tier can never influence a higher tier's outcome, even indirectly.
@@ -13,6 +15,8 @@ Nextly is an adaptive weekly scheduler. You give it tasks, each with a priority 
 - **Google Calendar integration done carefully.** Real OAuth refresh-token lifecycle, timezone-safe event conversion that never trusts the server's local clock, multi-day all-day events expanded correctly across the planning window.
 - **A demo that's actually live**, not a screen recording. Click through with zero sign-up: anonymous auth seeds real example data, runs the real solver, and the account cleans itself up automatically after 24 hours.
 - **Tested and operated, not just working on my machine.** 91 frontend unit tests, 32 backend tests, and a Playwright E2E suite covering real sign-in through a real solve, all run in GitHub Actions on every push across three jobs (frontend, backend, end-to-end). Deployed for real on Vercel and Render, including the unglamorous parts: catching a Vercel function-timeout that would've broken the first request after any idle period, and warming the backend early so a cold start rarely reaches the user at all.
+
+![Nextly calendar app, showing the scheduled week and the status panel](docs/screenshots/calendar-app.png)
 
 ## Stack
 
