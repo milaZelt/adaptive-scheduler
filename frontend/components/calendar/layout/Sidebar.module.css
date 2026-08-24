@@ -64,6 +64,12 @@
   opacity: 0.6;
   cursor: default;
 }
+.wakingNote {
+  font-size: 0.68rem;
+  color: var(--muted);
+  line-height: 1.4;
+  margin: -0.4rem 0 0;
+}
 .linkBtn {
   font-family: var(--font-sans);
   font-size: 0.75rem;
