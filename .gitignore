@@ -57,3 +57,8 @@ frontend/e2e/.auth/
 frontend/test-results/
 frontend/playwright-report/
 frontend/blob-report/
+
+# Claude Code project config - internal tooling, not for public view
+CLAUDE.md
+frontend/CLAUDE.md
+frontend/AGENTS.md
