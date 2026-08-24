@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import type { SessionCompletionStatus, UnresolvedSessionInfo } from "@/lib/calendar/types";
 import { fmtHour, parseLocalDate } from "@/lib/calendar/dateUtils";
 import { useAppState } from "../state/AppStateContext";
-import Modal from "@/components/ui/Modal";
+import Drawer from "./Drawer";
 import Button from "@/components/ui/Button";
 import styles from "./ResolveSessionsModal.module.css";
 
@@ -46,8 +46,15 @@ export default function ResolveSessionsModal({ sessions, onClose, onResolved }: 
   }
 
   return (
-    <Modal onClose={onClose}>
-      <div className={styles.title}>What happened with these?</div>
+    <Drawer
+      title="What happened with these?"
+      onClose={onClose}
+      footer={
+        <Button variant="primary" disabled={!allChosen || saving} onClick={handleContinue}>
+          {saving ? "Saving…" : "Continue"}
+        </Button>
+      }
+    >
       <p className={styles.intro}>
         Before updating your schedule, let Nextly know whether these past sessions actually happened.
         It needs this to know how much work remains.
@@ -81,15 +88,6 @@ export default function ResolveSessionsModal({ sessions, onClose, onResolved }: 
           </div>
         ))}
       </div>
-
-      <div className={styles.actions}>
-        <Button variant="plain" onClick={onClose}>
-          Cancel
-        </Button>
-        <Button variant="primary" disabled={!allChosen || saving} onClick={handleContinue}>
-          {saving ? "Saving…" : "Continue"}
-        </Button>
-      </div>
-    </Modal>
+    </Drawer>
   );
 }
